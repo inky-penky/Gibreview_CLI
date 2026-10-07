@@ -1,0 +1,4 @@
+﻿Test Case ID;Test Scenario;Severity;Test Steps;Expected Results;Browser
+TS 001;Transfer to a saved beneficiary;Critical;1. Log in 2. Tap Transfer 3. Pick a saved beneficiary 4. Enter 1000 and confirm with PIN;Success screen with a reference number, balance drops by 1000 plus fee;Android, iOS
+TS 002;Transfer with insufficient balance;Major;1. Log in 2. Tap Transfer 3. Enter an amount above the balance;Clear insufficient funds message and no debit;Android, iOS
+TS 003;Statement download;Minor;1. Open Account 2. Tap Download statement 3. Choose last month;A PDF statement downloads and opens;Desktop

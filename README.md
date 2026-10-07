@@ -19,7 +19,7 @@ The coordination is the hard part, not the testing itself. Someone has to find t
 
 ## What BugBash does
 
-0. **Generate (optional).** Point it at a feature URL and it drafts the test plan for you. See [Generate a test plan from a URL](#generate-a-test-plan-from-a-url).
+0. **Start from what you have.** Draft cases from a feature URL with `generate`, or bring existing cases from Excel, Google Sheets or TestRail with `import`. See [Generate a test plan from a URL](#generate-a-test-plan-from-a-url) and [Use test cases from a spreadsheet](#use-test-cases-from-a-spreadsheet-csv).
 1. **Plan.** Validates a YAML test plan (cases, steps, expected results, priorities, device classes) and splits it into focused bounties, one per device class and chunk of cases, so each job takes about 20 minutes.
 2. **Publish.** Creates and funds each bounty through `gibwork.tasks.create`. Every bounty includes the build link, the cases and a strict `BUGBASH RESULT` template for testers to paste back.
 3. **Collect.** Pulls submissions with `gibwork.submissions.list` and parses each one against the exact case ids that bounty asked for. Each submission is classified as *valid*, *incomplete* (missing cases, a FAIL without evidence, no device) or *invalid* (no result block).
@@ -38,7 +38,7 @@ Most Gibwork tooling helps people find bounties or write them one at a time. Bug
 | Toolset | How BugBash uses it |
 | --- | --- |
 | **SDK** `@gibwork/sdk` 0.2.x (core) | `tasks.create`, `tasks.list`, `tasks.listAvailable`, `tasks.refund`, `submissions.list`, `submissions.approve`, `submissions.reject`, plus the Node keypair signer. Typed error handling for `GibworkApiError`, `GibworkAmbiguousSubmitError` and rate limits. |
-| **MCP** | BugBash ships its own MCP server (`bugbash-mcp`) with 8 tools that wrap the SDK workflow for agents, with spend guards. |
+| **MCP** | BugBash ships its own MCP server (`bugbash-mcp`) with 9 tools that wrap the SDK workflow for agents, with spend guards. |
 | **CLI** | `bugbash` is a terminal-first CLI on top of the SDK. |
 
 ## Install
@@ -50,7 +50,7 @@ git clone https://github.com/YOUR_GITHUB_USER/gibwork-bugbash.git
 cd gibwork-bugbash
 npm install          # also builds dist/ via the prepare script
 npm link             # optional, puts `bugbash` and `bugbash-mcp` on your PATH
-npm test             # 14 tests, including a full end-to-end run on the simulator
+npm test             # 22 tests, including a full end-to-end run on the simulator
 ```
 
 Without `npm link`, replace `bugbash` with `node dist/cli.js` in the commands below.
@@ -157,11 +157,57 @@ A full generated draft from the sample checkout page is in [`examples/sample-out
 
 **Limits.** The generator only sees the page, not the intent. It knows there is a coupon field, but not what discount a code should give. Multi-step flows need one URL per step, or `--describe` with the AI writer. Treat the output as a strong first draft for a person to finish.
 
+## Use test cases from a spreadsheet (CSV)
+
+Most teams already keep test cases in Excel, Google Sheets, TestRail, Zephyr, Xray or Qase. BugBash reads their CSV or TSV exports directly.
+
+```bash
+bugbash import cases.csv --url https://staging.acme-shop.example --out testplan.yaml
+```
+
+```
+Read cases.csv (comma separated)
+  Column mapping
+    id             ← ID
+    title          ← Title
+    priority       ← Priority
+    preconditions  ← Preconditions
+    steps          ← Steps
+    expected       ← Expected Result
+    devices        ← Platform
+  Ignored columns Assignee, Status
+
+4 cases imported, 2 high, 1 medium, 1 low
+```
+
+**What it handles**
+
+- **Column names matched loosely.** `ID`, `Test Case ID` and `Key` all map to the id. `Title`, `Summary` and `Test Scenario` map to the title. `Steps`, `Test Steps` and `Steps (Step)` map to the steps. `Expected Result` and `Steps (Expected Result)` map to the expected result. `Severity` works as priority, and `Platform` or `Browser` work as devices. Other columns are ignored and listed.
+- **Priorities from any tool.** P1/P2/P3, Critical/Major/Minor, Highest to Lowest, and TestRail's "4 - Must Test" to "1 - Low" are all normalised to high, medium or low. Anything unrecognised becomes medium with a warning.
+- **Steps in any shape.** One step per line inside a cell, inline numbering like `1. Log in 2. Tap Transfer`, bullets, or `Step 1:` prefixes all work.
+- **One row per step.** In TestRail and Xray exports, continuation rows with no id or title are merged into the case above. Per-step expected results are combined in order.
+- **Excel quirks.** Semicolon-separated files (Excel in many locales), tab-separated files, a UTF-8 BOM, quoted multi-line cells and CRLF line endings are all handled.
+- **Devices.** "Mobile", "Android, iOS", "Desktop" and "All" map to the plan's devices. Unknown values run on every device, with a warning.
+- **Clear errors with row numbers,** using the row numbers you see in the spreadsheet. For example "Row 4 (A3): no expected result" or "Row 3: duplicate id A1 (also on row 2)". Missing ids are generated as TC-01, TC-02 and so on.
+
+**Keep the spreadsheet as the source of truth.** With `--link`, the plan stores `casesFile: cases.csv` instead of copying the cases in. Every `bugbash plan` then re-reads the CSV, so your QA team keeps editing the sheet as usual. You can also add `casesFile:` to any plan by hand, and its cases are added after any inline ones.
+
+| Option | Meaning |
+| --- | --- |
+| `--url <url>` | Build or staging URL testers should open (required) |
+| `-o, --out <file>` | Output plan (default `testplan.yaml`). Add `--force` to overwrite. |
+| `--link` | Reference the CSV instead of copying cases in |
+| `--name`, `--release` | Plan name and release label |
+| `--per-tester <amount>`, `--testers <n>` | Reward per accepted tester and testers per bounty |
+
+Sample exports to try are in [`examples/csv/`](examples/csv/): a Google Sheets file, a TestRail one-row-per-step export and an Excel semicolon file with a BOM. For `.xlsx` files, use **File > Save as > CSV UTF-8** first.
+
 ## Commands
 
 | Command | What it does | Moves money |
 | --- | --- | --- |
 | `bugbash generate <url> [options]` | Drafts a test plan from a feature page | no |
+| `bugbash import <csv> --url <url> [options]` | Turns a CSV/TSV of test cases into a plan | no |
 | `bugbash init [file]` | Writes the sample plan | no |
 | `bugbash plan <file> [--mock] [--prod] [--show <batch>]` | Validates, batches, prices and prints a bounty preview | no |
 | `bugbash publish [--confirm] [--batch <id>]` | Creates and funds bounties. Skips batches that are already published. | with `--confirm` |
@@ -242,7 +288,7 @@ The parser accepts HTML, bullets, lowercase text, "passed" or "failed", and `:`,
 }
 ```
 
-The tools are `bugbash_generate_plan`, `bugbash_plan`, `bugbash_preview_bounty`, `bugbash_publish`, `bugbash_status`, `bugbash_collect`, `bugbash_triage` and `bugbash_report`.
+The tools are `bugbash_generate_plan`, `bugbash_import_csv`, `bugbash_plan`, `bugbash_preview_bounty`, `bugbash_publish`, `bugbash_status`, `bugbash_collect`, `bugbash_triage` and `bugbash_report`.
 
 Spend guards work like this. `bugbash_publish`, and `bugbash_triage` with `apply=true`, refuse unless the agent passes `confirm=true`. The refusal message tells the agent to show the user the cost first. On production they also need `BUGBASH_MCP_ALLOW_PRODUCTION=1`, which only the person running the server can set.
 
@@ -304,6 +350,8 @@ src/
   aggregate.ts  case × device consensus and release gate
   report.ts     Markdown, CSV, JUnit XML and JSON writers
   generate/     URL → page model → draft test plan (rule-based and AI writers)
+  csvcases.ts   CSV/TSV case reader (column mapping, priorities, step splitting)
+  importplan.ts bugbash import, CSV → test plan
   test/         node:test unit and end-to-end tests
 examples/       sample plan, demo scripts, CI workflow, sample output
 ```

@@ -1,0 +1,9 @@
+ID,Title,Priority,Preconditions,Steps,Expected Result,Platform,Assignee,Status
+TC-01,Guest checkout with card,P1,,"Open the shop without logging in
+Add any in-stock product to the cart
+Choose ""Continue as guest"" at checkout
+Pay with the test card",Order confirmation page shows an order number and the cart is empty,All,Ahmad,Ready
+TC-02,Apply coupon SAVE10,P1,Logged in with an item in the cart,"1. Go to checkout 2. Enter SAVE10 and tap Apply 3. Pay with the test card","Total drops by 10 percent, Pay stays enabled and the order is placed",All,Ahmad,Ready
+TC-03,Checkout on slow 3G,P2,Turn on a slow network setting,"- Add an item to the cart
+- Pay with the test card","Loading states are visible, nothing is charged twice",Mobile,,Draft
+TC-04,Keyboard-only checkout,P3,,"Using only Tab, Enter and Space, add an item and complete checkout",Every control is reachable and focus is always visible,Desktop,,Ready

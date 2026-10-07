@@ -1,6 +1,6 @@
 import { GibworkAmbiguousSubmitError, GibworkApiError } from '@gibwork/sdk';
 import type { CreateTaskInput } from '@gibwork/sdk';
-import { buildBatches, fromCents, loadPlan, PlanError, poolPerBatch, toCents } from './plan.js';
+import { buildBatches, fromCents, loadPlanWithInfo, PlanError, poolPerBatch, toCents } from './plan.js';
 import { bountyContent, bountyTitle } from './content.js';
 import { parseSubmission } from './parser.js';
 import { aggregate, type Aggregate } from './aggregate.js';
@@ -30,8 +30,8 @@ export interface PlanSummary {
   symbol: string;
 }
 
-export async function planRun(planPath: string, store: Store, environment: Environment): Promise<{ run: RunState; summary: PlanSummary }> {
-  const plan = await loadPlan(planPath);
+export async function planRun(planPath: string, store: Store, environment: Environment): Promise<{ run: RunState; summary: PlanSummary; warnings: string[] }> {
+  const { plan, warnings } = await loadPlanWithInfo(planPath);
   if (plan.draft) {
     const pending = plan.cases.filter((c) => c.reviewNote).map((c) => `${c.id}: ${c.reviewNote}`);
     throw new PlanError(
@@ -43,7 +43,7 @@ export async function planRun(planPath: string, store: Store, environment: Envir
   const batches = buildBatches(plan).map((b) => ({ ...b, title: bountyTitle(plan, b), content: bountyContent(plan, b, runId) }));
   const run: RunState = { version: 1, runId, planPath, plan, environment, createdAt: new Date().toISOString(), batches, submissions: {} };
   await store.save(run);
-  return { run, summary: summarize(run) };
+  return { run, summary: summarize(run), warnings };
 }
 
 export function summarize(run: RunState): PlanSummary {

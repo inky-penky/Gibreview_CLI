@@ -1,0 +1,7 @@
+"ID","Title","Section","Priority","Preconditions","Steps (Step)","Steps (Expected Result)"
+"C101","Sign in with email and password","Auth","4 - Must Test","A registered test account","Open the sign-in page","Sign-in form is shown"
+"","","","","","Enter the test email and password and tap Sign in","Home screen loads with the user's name"
+"C102","Wrong password is rejected","Auth","3 - High","","Open the sign-in page","Sign-in form is shown"
+"","","","","","Enter the test email with a wrong password and tap Sign in","An error says the details are wrong and no session starts"
+"C103","Reset password email","Auth","2 - Medium","","Tap ""Forgot password"" and enter the test email","A reset email arrives within 2 minutes"
+"C104","Remember me keeps you signed in","Auth","1 - Low","","Sign in with ""Remember me"" ticked, close the browser, reopen the site","You are still signed in"

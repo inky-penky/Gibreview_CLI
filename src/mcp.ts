@@ -74,6 +74,41 @@ server.registerTool(
 );
 
 server.registerTool(
+  'bugbash_import_csv',
+  {
+    title: 'Import test cases from CSV',
+    description:
+      'Convert a CSV/TSV of test cases (Excel, Google Sheets, TestRail, Zephyr, Xray exports) into a BugBash test plan. Columns are matched by name and priorities normalised. Returns the column mapping and any warnings to show the user.',
+    inputSchema: {
+      csvPath: z.string(),
+      url: z.string().url().describe('Build or staging URL testers should open'),
+      outPath: z.string().default('testplan.yaml'),
+      name: z.string().optional(),
+      link: z.boolean().default(false).describe('Reference the CSV instead of copying cases in'),
+      overwrite: z.boolean().default(false),
+    },
+  },
+  async ({ csvPath, url, outPath, name, link, overwrite }) => {
+    try {
+      const { importCsvPlan } = await import('./importplan.js');
+      const { writePlanFile } = await import('./generate/index.js');
+      const res = await importCsvPlan({ csvPath: resolve(csvPath), outPath: resolve(outPath), url, name, link });
+      await writePlanFile(resolve(outPath), res.yaml, overwrite);
+      return ok({
+        file: resolve(outPath),
+        columns: res.csv.columns,
+        ignoredColumns: res.csv.ignoredColumns,
+        warnings: res.csv.warnings,
+        cases: res.plan.cases.map((c) => ({ id: c.id, priority: c.priority, title: c.title, steps: c.steps.length })),
+        next: 'Show the user the mapping and warnings, then call bugbash_plan with this file.',
+      });
+    } catch (e) {
+      return fail(e);
+    }
+  },
+);
+
+server.registerTool(
   'bugbash_plan',
   {
     title: 'Plan a crowd QA run',
@@ -86,8 +121,8 @@ server.registerTool(
   },
   async ({ planPath, environment }) => {
     try {
-      const { summary } = await planRun(resolve(planPath), store, environment);
-      return ok({ ...summary, next: 'Show the budget to the user, then call bugbash_publish with confirm=true.' });
+      const { summary, warnings } = await planRun(resolve(planPath), store, environment);
+      return ok({ ...summary, warnings, next: 'Show the budget to the user, then call bugbash_publish with confirm=true.' });
     } catch (e) {
       return fail(e);
     }

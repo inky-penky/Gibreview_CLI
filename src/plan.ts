@@ -1,4 +1,6 @@
 import { readFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { readCasesCsv } from './csvcases.js';
 import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
 
@@ -35,6 +37,8 @@ export const PlanSchema = z
     release: z.string().optional(),
     /** Generated plans start as drafts and cannot be planned or published until a person removes this. */
     draft: z.boolean().optional(),
+    /** CSV/TSV file of test cases, relative to the plan file. Its cases are added after any inline cases. */
+    casesFile: z.string().optional(),
     build: z.object({
       url: z.string().url(),
       notes: z.string().optional(),
@@ -104,7 +108,12 @@ export function validatePlan(raw: unknown): TestPlan {
   return result.data;
 }
 
-export async function loadPlan(path: string): Promise<TestPlan> {
+export async function loadPlanWithInfo(path: string): Promise<{ plan: TestPlan; warnings: string[] }> {
+  if (/\.(csv|tsv)$/i.test(path)) {
+    throw new PlanError(
+      `${path} is a list of test cases, not a full plan. Convert it with "bugbash import ${path} --url <build url>", or add "casesFile: ${path}" to a plan YAML.`,
+    );
+  }
   let text: string;
   try {
     text = await readFile(path, 'utf8');
@@ -117,7 +126,20 @@ export async function loadPlan(path: string): Promise<TestPlan> {
   } catch (err) {
     throw new PlanError(`Cannot parse ${path}: ${(err as Error).message}`);
   }
-  return validatePlan(raw);
+  const warnings: string[] = [];
+  const obj = raw as { casesFile?: unknown; cases?: unknown[]; devices?: Array<{ id: string; label: string }> };
+  if (obj && typeof obj.casesFile === 'string') {
+    const csvPath = resolve(dirname(path), obj.casesFile);
+    const imported = await readCasesCsv(csvPath, Array.isArray(obj.devices) ? obj.devices : []);
+    if (imported.errors.length) throw new PlanError(`Cases file ${obj.casesFile} has problems`, imported.errors);
+    warnings.push(...imported.warnings.map((w) => `${obj.casesFile}: ${w}`));
+    obj.cases = [...(Array.isArray(obj.cases) ? obj.cases : []), ...imported.cases];
+  }
+  return { plan: validatePlan(raw), warnings };
+}
+
+export async function loadPlan(path: string): Promise<TestPlan> {
+  return (await loadPlanWithInfo(path)).plan;
 }
 
 /** One bounty per device per chunk of cases, so each tester gets a focused, finishable job. */

@@ -74,6 +74,36 @@ program
   });
 
 program
+  .command('import')
+  .description('turn a CSV/TSV of test cases (Excel, Google Sheets, TestRail, Zephyr, Xray…) into a test plan')
+  .argument('<csv>', 'cases file')
+  .requiredOption('--url <url>', 'build or staging URL testers should open')
+  .option('-o, --out <file>', 'where to write the plan', 'testplan.yaml')
+  .option('--name <name>', 'plan name (defaults to the file name)')
+  .option('--release <version>', 'release being tested')
+  .option('--per-tester <amount>', 'reward per accepted tester', '2.00')
+  .option('--testers <n>', 'testers per bounty', (v) => parseInt(v, 10), 2)
+  .option('--link', 'reference the CSV with casesFile instead of copying the cases in')
+  .option('--force', 'overwrite the output file')
+  .action(async (csvPath: string, opts: { url: string; out: string; name?: string; release?: string; perTester: string; testers: number; link?: boolean; force?: boolean }) => {
+    const { importCsvPlan } = await import('./importplan.js');
+    const { writePlanFile } = await import('./generate/index.js');
+    const res = await importCsvPlan({ csvPath, outPath: opts.out, url: opts.url, name: opts.name, release: opts.release, perTester: opts.perTester, testersPerBatch: opts.testers, link: opts.link });
+    await writePlanFile(opts.out, res.yaml, opts.force);
+    const delim = { ',': 'comma', ';': 'semicolon', '\t': 'tab' }[res.csv.delimiter] ?? res.csv.delimiter;
+    console.log(`${c.bold('Read')} ${csvPath} ${c.dim(`(${delim} separated)`)}`);
+    console.log(c.dim('  Column mapping'));
+    for (const [field, header] of Object.entries(res.csv.columns)) console.log(c.dim(`    ${field.padEnd(14)} ← ${header ?? '(not found)'}`));
+    if (res.csv.ignoredColumns.length) console.log(c.dim(`  Ignored columns ${res.csv.ignoredColumns.join(', ')}`));
+    const by = (p: string) => res.plan.cases.filter((x) => x.priority === p).length;
+    console.log(`\n${c.bold(`${res.plan.cases.length} cases`)} imported, ${by('high')} high, ${by('medium')} medium, ${by('low')} low`);
+    for (const tc of res.plan.cases.slice(0, 15)) console.log(`  ${tc.id.padEnd(10)} ${tc.priority.padEnd(6)}  ${tc.title.slice(0, 60)}  ${c.dim(`${tc.steps.length} step${tc.steps.length === 1 ? "" : "s"}${tc.devices ? ` · ${tc.devices.join(', ')}` : ''}`)}`);
+    if (res.plan.cases.length > 15) console.log(c.dim(`  … and ${res.plan.cases.length - 15} more`));
+    res.csv.warnings.forEach((w) => console.log(c.yellow(`! ${w}`)));
+    console.log(`\n${c.green('✓')} Wrote ${opts.out}. Check it, then run ${c.bold(`bugbash plan ${opts.out}`)}`);
+  });
+
+program
   .command('plan')
   .description('validate a test plan, split it into bounties and preview cost (no money moves)')
   .argument('<file>', 'test plan (.yaml or .json)')
@@ -82,7 +112,8 @@ program
   .option('--show <batchId>', 'print the full bounty text for one batch')
   .action(async (file: string, opts: { mock?: boolean; prod?: boolean; show?: string }) => {
     const env = resolveEnvironment(opts);
-    const { run, summary } = await planRun(file, store(), env);
+    const { run, summary, warnings } = await planRun(file, store(), env);
+    warnings.forEach((w) => console.log(c.yellow(`! ${w}`)));
     console.log(`${c.bold('Run')} ${summary.runId}  ${envBadge(env)}`);
     console.log(`${run.plan.cases.length} cases × ${run.plan.devices.length} device classes → ${c.bold(String(summary.batches.length))} bounties\n`);
     for (const b of summary.batches) console.log(`  ${c.cyan(b.id.padEnd(20))} ${String(b.cases).padStart(2)} cases  pool ${b.pool} ${summary.symbol}  ${c.dim(b.title)}`);
