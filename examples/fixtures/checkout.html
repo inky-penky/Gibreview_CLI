@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Checkout · Acme Shop</title>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/cart">Cart</a>
+      <a href="/account/orders">My orders</a>
+      <a href="/help">Help</a>
+      <a href="#main">Skip to content</a>
+    </nav>
+  </header>
+  <main id="main">
+    <h1>Checkout</h1>
+    <section>
+      <h2>Order summary</h2>
+      <img src="/img/sneaker.jpg">
+      <p>Runner sneaker, size 42, ₦45,000</p>
+      <button type="button">Edit cart</button>
+    </section>
+
+    <form id="checkout-form" aria-label="Delivery and payment" action="/checkout" method="post">
+      <h2>Delivery details</h2>
+      <label for="fullname">Full name *</label>
+      <input id="fullname" name="fullname" required minlength="3" maxlength="60">
+
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" required>
+
+      <label for="phone">Phone number</label>
+      <input id="phone" name="phone" type="tel" required pattern="0[789][01][0-9]{8}" placeholder="08012345678">
+
+      <label for="state">State</label>
+      <select id="state" name="state" required>
+        <option value="">Choose a state</option>
+        <option>Lagos</option>
+        <option>Abuja FCT</option>
+        <option>Kano</option>
+      </select>
+
+      <label for="qty">Quantity</label>
+      <input id="qty" name="qty" type="number" min="1" max="5" value="1">
+
+      <label><input type="radio" name="pay" value="card" required> Card</label>
+      <label><input type="radio" name="pay" value="transfer"> Bank transfer</label>
+
+      <label for="coupon">Coupon code</label>
+      <input id="coupon" name="coupon" maxlength="12">
+
+      <label><input type="checkbox" name="terms" required> I agree to the terms</label>
+
+      <button type="submit">Pay now</button>
+    </form>
+
+    <form aria-label="Newsletter">
+      <label>Email for deals <input type="email" name="newsletter"></label>
+      <button>Subscribe</button>
+    </form>
+  </main>
+  <footer><a href="/privacy">Privacy</a></footer>
+</body>
+</html>

@@ -18,6 +18,9 @@ const CaseSchema = z.object({
   steps: z.array(z.string().min(1)).min(1),
   expected: z.string().min(3),
   devices: z.array(z.string()).optional(),
+  /** Set by `bugbash generate`. Kept in the plan so reviewers can see what still needs a human look. */
+  source: z.enum(['manual', 'rules', 'ai']).optional(),
+  reviewNote: z.string().optional(),
 });
 
 const DeviceSchema = z.object({
@@ -30,6 +33,8 @@ export const PlanSchema = z
   .object({
     name: z.string().min(3),
     release: z.string().optional(),
+    /** Generated plans start as drafts and cannot be planned or published until a person removes this. */
+    draft: z.boolean().optional(),
     build: z.object({
       url: z.string().url(),
       notes: z.string().optional(),

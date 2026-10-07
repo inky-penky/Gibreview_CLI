@@ -40,6 +40,40 @@ const server = new McpServer({ name: 'gibwork-bugbash', version: '0.1.0' });
 const runId = z.string().optional().describe('Run id. Defaults to the most recent run.');
 
 server.registerTool(
+  'bugbash_generate_plan',
+  {
+    title: 'Draft a test plan from a URL',
+    description:
+      'Read a feature page and draft manual test cases as a YAML test plan marked draft: true. The user must review it and remove draft: true before bugbash_plan accepts it. Show the user the cases and any review notes.',
+    inputSchema: {
+      url: z.string().url(),
+      outPath: z.string().default('testplan.yaml'),
+      describe: z.string().optional().describe('What the feature should do, used by the AI writer'),
+      maxCases: z.number().int().min(1).max(40).default(12),
+      overwrite: z.boolean().default(false),
+    },
+  },
+  async ({ url, outPath, describe, maxCases, overwrite }) => {
+    try {
+      const { generatePlan, writePlanFile } = await import('./generate/index.js');
+      const res = await generatePlan({ url, describe, maxCases });
+      await writePlanFile(resolve(outPath), res.yaml, overwrite);
+      return ok({
+        file: resolve(outPath),
+        draft: true,
+        writer: res.source,
+        readVia: res.page.renderedWith,
+        warnings: res.warnings,
+        cases: res.plan.cases.map((c) => ({ id: c.id, priority: c.priority, title: c.title, expected: c.expected, reviewNote: c.reviewNote })),
+        next: 'Ask the user to review the file, resolve review notes and delete "draft: true", then call bugbash_plan.',
+      });
+    } catch (e) {
+      return fail(e);
+    }
+  },
+);
+
+server.registerTool(
   'bugbash_plan',
   {
     title: 'Plan a crowd QA run',

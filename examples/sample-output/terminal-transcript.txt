@@ -1,9 +1,37 @@
 
-[1;36m$ bugbash init testplan.yaml[0m
+$ bugbash generate <feature url> --out draft.yaml
+Read Checkout · Acme Shop (via file)
+  2 forms, 9 fields, 1 actions, 4 nav links
+
+12 draft cases by the rule-based writer
+
+  TC-01  high    Checkout · Acme Shop: page loads correctly
+  TC-02  high    Delivery and payment: submit with valid details  • needs review
+  TC-03  high    Delivery and payment: required fields are enforced
+  TC-04  medium  Delivery and payment: invalid email is rejected
+  TC-05  medium  Delivery and payment: invalid phone number is rejected
+  TC-06  medium  Delivery and payment: Quantity limits are enforced
+  TC-07  medium  Delivery and payment: invalid coupon code is handled
+  TC-08  medium  Delivery and payment: I agree to the terms must be ticked
+  TC-09  high    Delivery and payment: double tap does not submit twice  • needs review
+  TC-10  medium  Newsletter: submit with valid details  • needs review
+  TC-11  medium  "Edit cart" works  • needs review
+  TC-12  medium  Layout works on a phone screen
+
+✓ Wrote draft.yaml as a draft. Review it, delete draft: true, then run bugbash plan draft.yaml
+
+$ bugbash plan draft.yaml   (refused until reviewed)
+✗ draft.yaml is a generated draft. Review every case, fix expected results, then delete "draft: true" before testers are paid to run it.
+  - TC-02: Replace the generic expected result with the exact success message or page the team expects
+  - TC-09: Say where testers can confirm a single order was created, for example the orders page
+  - TC-10: Replace the generic expected result with the exact success message or page the team expects
+  - TC-11: Describe exactly what "Edit cart" should do
+
+$ bugbash init testplan.yaml   (a reviewed plan)
 ✓ Wrote testplan.yaml. Edit the cases and devices, then run bugbash plan testplan.yaml
 
-[1;36m$ bugbash plan testplan.yaml --mock[0m
-Run acme-shop-checkout-regre-20261007-hsjr  mock
+$ bugbash plan testplan.yaml --mock
+Run acme-shop-checkout-regre-20261007-mklr  mock
 8 cases × 3 device classes → 6 bounties
 
   android-chrome-1      5 cases  pool 4.00 USDC  [QA] Acme Shop checkout regression v2.3.0 on Android phone (Chrome) (part 1/2)
@@ -17,7 +45,7 @@ Budget 24.00 USDC (2.00 per tester × 2 testers × 6 bounties), plus Gibwork pla
 
 Next bugbash publish --confirm
 
-[1;36m$ bugbash plan testplan.yaml --mock --show ios-safari-1[0m
+$ bugbash plan testplan.yaml --mock --show ios-safari-1
 [QA] Acme Shop checkout regression v2.3.0 on iPhone (Safari) (part 1/2)
 ────────────────────────────────────────────────────────────
 Run 5 manual test cases on a real iPhone (Safari) device and report the result of each one in the format below.
@@ -79,21 +107,21 @@ Paste this block into your submission and fill in every line. Pick exactly one o
 
 BUGBASH RESULT
 
-[1;36m$ bugbash publish --confirm[0m
+$ bugbash publish --confirm
   Publishing android-chrome-1…
   Publishing android-chrome-2…
   Publishing ios-safari-1…
   Publishing ios-safari-2…
   Publishing desktop-1…
   Publishing desktop-2…
-✓ android-chrome-1     task fe44aade-7646-48f6-8d1e-18f6c6152ce5  tx 11d877b6b8e7eb42263e8893054c44ef8bff9fbbf9a3
-✓ android-chrome-2     task 0171b43a-3fae-49a6-9d32-f32f4152d3be  tx 7c2147745e6a62999534ceeb6745395329d7bc2e18fe
-✓ ios-safari-1         task 3c815d42-a4eb-490a-9bf0-1ca46c24f284  tx 54aa50290a836bd58f5d53d8ebec733620fdbf28f429
-✓ ios-safari-2         task e278d53d-6208-474a-a708-49d391b64014  tx 4a06ca36a8163c05dd756097de8f194181a39f6e2ae6
-✓ desktop-1            task 53572156-360f-4472-9388-fbc7614b573f  tx 2d4fd226160f41633e8fe897a8c46c7b95299ede236d
-✓ desktop-2            task 7e23cba0-81d8-438b-9cee-afc9c8830583  tx 5302426b6499bc190b1bee001cf52762a6b7514f05b4
+✓ android-chrome-1     task 4dc3a5b9-e5c2-4dcb-a5c5-1173236867ea  tx 18c79474bf046ab6fb2f63b32b757f299e91e5c8dd8d
+✓ android-chrome-2     task 515d7ac1-6b12-40a0-ba00-11b4cf6c3277  tx 84bd543b6efc30f573af3398fb1943a51187ca21c791
+✓ ios-safari-1         task 710da18b-5892-473c-8ae3-685ea1cf195d  tx 98b5cdb3488a4f71aeff8a90ea7a58de65dd854e4a82
+✓ ios-safari-2         task 99289523-c0cf-49a3-9ad4-3b0d410b9986  tx 4df6c14bd36a35db84f3dd79ce508feb189c785dd2d9
+✓ desktop-1            task 9442cb00-c672-4351-a4e2-1704c18d09ee  tx 6f34418824fbbb559471f050cd5e3bcd29bc7a15c4f0
+✓ desktop-2            task f7376951-f325-4b5c-b0ab-3445954b568f  tx 42aaa7971061d90696270aa7f062fe670b15ea299f8b
 
-[1;36m$ bugbash collect[0m
+$ bugbash collect
   Collecting android-chrome-1…
   Collecting android-chrome-2…
   Collecting ios-safari-1…
@@ -110,7 +138,7 @@ BUGBASH RESULT
 
 Next bugbash triage
 
-[1;36m$ bugbash triage[0m
+$ bugbash triage
   REJECT @quickcash99    android-chrome-1   No BUGBASH RESULT block found. Please resubmit using the template in the bounty, one line per case.
   PAY    @ada_qa         android-chrome-1   2.00 USDC  All 5 cases reported with evidence
   PAY    @tunde.tests    android-chrome-1   2.00 USDC  All 5 cases reported with evidence
@@ -138,16 +166,16 @@ Next bugbash triage
 
 Dry run. 12 payouts and 12 rejections planned. Re-run with --apply to execute.
 
-[1;36m$ bugbash triage --apply[0m
-Run acme-shop-checkout-regre-20261007-28nj  mock  last collected 2026-10-07T13:44:28.801Z
-  android-chrome-1     live        4 submissions  2/2 paid  fe44aade-7646-48f6-8d1e-18f6c6152ce5
-  android-chrome-2     live        4 submissions  2/2 paid  0171b43a-3fae-49a6-9d32-f32f4152d3be
-  ios-safari-1         live        4 submissions  2/2 paid  3c815d42-a4eb-490a-9bf0-1ca46c24f284
-  ios-safari-2         live        4 submissions  2/2 paid  e278d53d-6208-474a-a708-49d391b64014
-  desktop-1            live        4 submissions  2/2 paid  53572156-360f-4472-9388-fbc7614b573f
-  desktop-2            live        4 submissions  2/2 paid  7e23cba0-81d8-438b-9cee-afc9c8830583
+$ bugbash triage --apply
+Run acme-shop-checkout-regre-20261007-qtrm  mock  last collected 2026-10-07T14:12:01.992Z
+  android-chrome-1     live        4 submissions  2/2 paid  4dc3a5b9-e5c2-4dcb-a5c5-1173236867ea
+  android-chrome-2     live        4 submissions  2/2 paid  515d7ac1-6b12-40a0-ba00-11b4cf6c3277
+  ios-safari-1         live        4 submissions  2/2 paid  710da18b-5892-473c-8ae3-685ea1cf195d
+  ios-safari-2         live        4 submissions  2/2 paid  99289523-c0cf-49a3-9ad4-3b0d410b9986
+  desktop-1            live        4 submissions  2/2 paid  9442cb00-c672-4351-a4e2-1704c18d09ee
+  desktop-2            live        4 submissions  2/2 paid  f7376951-f325-4b5c-b0ab-3445954b568f
 
-[1;36m$ bugbash report[0m
+$ bugbash report
 Release gate FAIL
   • TC-02 [high] fails on Android phone (Chrome) (2 fail / 0 pass)
 
@@ -168,10 +196,10 @@ Paid 24.00 USDC to 12 testers
 
 Exit code 1 (0 pass, 1 release blocked, 2 coverage gaps)
 
-[1;36m$ head -40 bugbash-report/report.md[0m
+$ head -40 bugbash-report/report.md
 # QA report · Acme Shop checkout regression v2.3.0
 
-Run `acme-shop-checkout-regre-20261007-28nj` · environment **mock** · generated 2026-10-07T13:44:30.302Z
+Run `acme-shop-checkout-regre-20261007-qtrm` · environment **mock** · generated 2026-10-07T14:12:03.553Z
 Build under test https://staging.acme-shop.example
 
 ## Release gate ❌ FAIL, release blocked

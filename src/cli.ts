@@ -43,6 +43,37 @@ program
   });
 
 program
+  .command('generate')
+  .description('draft a test plan from a feature URL (rule-based, or AI when ANTHROPIC_API_KEY is set)')
+  .argument('<url>', 'page of the feature to test')
+  .option('-o, --out <file>', 'where to write the draft plan', 'testplan.yaml')
+  .option('--describe <text>', 'what the feature should do, in plain words (used by the AI writer)')
+  .option('--name <name>', 'plan name')
+  .option('--max-cases <n>', 'cap on generated cases', (v) => parseInt(v, 10), 12)
+  .addOption(new Option('--render <mode>', 'how to read the page').choices(['auto', 'browser', 'fetch']).default('auto'))
+  .option('--cookies <value>', 'cookie header ("a=1; b=2") or a Playwright storage-state JSON file, for pages behind a login')
+  .option('--html <file>', 'read a saved HTML file instead of fetching the URL')
+  .option('--ai', 'require the AI writer')
+  .option('--no-ai', 'never use the AI writer')
+  .option('--force', 'overwrite the output file')
+  .action(async (url: string, opts: { out: string; describe?: string; name?: string; maxCases: number; render: 'auto' | 'browser' | 'fetch'; cookies?: string; html?: string; ai?: boolean; force?: boolean }) => {
+    const { generatePlan, writePlanFile } = await import('./generate/index.js');
+    const ai = opts.ai === true && process.argv.includes('--ai') ? 'on' : opts.ai === false ? 'off' : 'auto';
+    const res = await generatePlan({ url, htmlFile: opts.html, render: opts.render, cookies: opts.cookies, describe: opts.describe, name: opts.name, maxCases: opts.maxCases, ai, log });
+    await writePlanFile(opts.out, res.yaml, opts.force);
+    const p = res.page;
+    console.log(`${c.bold('Read')} ${p.title} ${c.dim(`(via ${p.renderedWith})`)}`);
+    console.log(c.dim(`  ${p.forms.length} forms, ${p.forms.reduce((n, f) => n + f.fields.length, 0)} fields, ${p.actions.length} actions, ${p.links.length} nav links`));
+    console.log(`\n${c.bold(`${res.plan.cases.length} draft cases`)} ${c.dim(res.source === 'ai' ? 'by the AI writer' : 'by the rule-based writer')}\n`);
+    for (const tc of res.plan.cases) {
+      const pri = tc.priority === 'high' ? c.red('high  ') : tc.priority === 'medium' ? c.yellow('medium') : c.dim('low   ');
+      console.log(`  ${tc.id}  ${pri}  ${tc.title}${tc.reviewNote ? c.cyan('  • needs review') : ''}`);
+    }
+    res.warnings.forEach((w) => console.log(c.yellow(`\n! ${w}`)));
+    console.log(`\n${c.green('✓')} Wrote ${opts.out} as a draft. Review it, delete ${c.bold('draft: true')}, then run ${c.bold(`bugbash plan ${opts.out}`)}`);
+  });
+
+program
   .command('plan')
   .description('validate a test plan, split it into bounties and preview cost (no money moves)')
   .argument('<file>', 'test plan (.yaml or .json)')

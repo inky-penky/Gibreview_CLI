@@ -1,6 +1,6 @@
 import { GibworkAmbiguousSubmitError, GibworkApiError } from '@gibwork/sdk';
 import type { CreateTaskInput } from '@gibwork/sdk';
-import { buildBatches, fromCents, loadPlan, poolPerBatch, toCents } from './plan.js';
+import { buildBatches, fromCents, loadPlan, PlanError, poolPerBatch, toCents } from './plan.js';
 import { bountyContent, bountyTitle } from './content.js';
 import { parseSubmission } from './parser.js';
 import { aggregate, type Aggregate } from './aggregate.js';
@@ -32,6 +32,13 @@ export interface PlanSummary {
 
 export async function planRun(planPath: string, store: Store, environment: Environment): Promise<{ run: RunState; summary: PlanSummary }> {
   const plan = await loadPlan(planPath);
+  if (plan.draft) {
+    const pending = plan.cases.filter((c) => c.reviewNote).map((c) => `${c.id}: ${c.reviewNote}`);
+    throw new PlanError(
+      `${planPath} is a generated draft. Review every case, fix expected results, then delete "draft: true" before testers are paid to run it.`,
+      pending,
+    );
+  }
   const runId = newRunId(plan.name);
   const batches = buildBatches(plan).map((b) => ({ ...b, title: bountyTitle(plan, b), content: bountyContent(plan, b, runId) }));
   const run: RunState = { version: 1, runId, planPath, plan, environment, createdAt: new Date().toISOString(), batches, submissions: {} };

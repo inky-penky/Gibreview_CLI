@@ -19,6 +19,7 @@ The coordination is the hard part, not the testing itself. Someone has to find t
 
 ## What BugBash does
 
+0. **Generate (optional).** Point it at a feature URL and it drafts the test plan for you. See [Generate a test plan from a URL](#generate-a-test-plan-from-a-url).
 1. **Plan.** Validates a YAML test plan (cases, steps, expected results, priorities, device classes) and splits it into focused bounties, one per device class and chunk of cases, so each job takes about 20 minutes.
 2. **Publish.** Creates and funds each bounty through `gibwork.tasks.create`. Every bounty includes the build link, the cases and a strict `BUGBASH RESULT` template for testers to paste back.
 3. **Collect.** Pulls submissions with `gibwork.submissions.list` and parses each one against the exact case ids that bounty asked for. Each submission is classified as *valid*, *incomplete* (missing cases, a FAIL without evidence, no device) or *invalid* (no result block).
@@ -37,7 +38,7 @@ Most Gibwork tooling helps people find bounties or write them one at a time. Bug
 | Toolset | How BugBash uses it |
 | --- | --- |
 | **SDK** `@gibwork/sdk` 0.2.x (core) | `tasks.create`, `tasks.list`, `tasks.listAvailable`, `tasks.refund`, `submissions.list`, `submissions.approve`, `submissions.reject`, plus the Node keypair signer. Typed error handling for `GibworkApiError`, `GibworkAmbiguousSubmitError` and rate limits. |
-| **MCP** | BugBash ships its own MCP server (`bugbash-mcp`) with 7 tools that wrap the SDK workflow for agents, with spend guards. |
+| **MCP** | BugBash ships its own MCP server (`bugbash-mcp`) with 8 tools that wrap the SDK workflow for agents, with spend guards. |
 | **CLI** | `bugbash` is a terminal-first CLI on top of the SDK. |
 
 ## Install
@@ -49,7 +50,7 @@ git clone https://github.com/YOUR_GITHUB_USER/gibwork-bugbash.git
 cd gibwork-bugbash
 npm install          # also builds dist/ via the prepare script
 npm link             # optional, puts `bugbash` and `bugbash-mcp` on your PATH
-npm test             # 9 tests, including a full end-to-end run on the simulator
+npm test             # 14 tests, including a full end-to-end run on the simulator
 ```
 
 Without `npm link`, replace `bugbash` with `node dist/cli.js` in the commands below.
@@ -63,6 +64,7 @@ Copy `.env.example` to `.env`. It is loaded automatically from the current direc
 | `SOLANA_PRIVATE_KEY` | for stage/production | Wallet that funds bounties and pays testers. Base58 secret key or a JSON byte array. Never commit it. |
 | `GIBWORK_ENV` | no | `stage` (default) or `production`. `--prod` on `plan` does the same. |
 | `BUGBASH_MOCK` | no | `1` runs against the offline simulator. Same as `--mock` on `plan`. |
+| `ANTHROPIC_API_KEY` | no | Turns on the AI writer for `bugbash generate` |
 | `BUGBASH_DIR` | MCP only | Where run state lives. The default is `./.bugbash`. |
 | `BUGBASH_MCP_ALLOW_PRODUCTION` | MCP only | `1` lets agents spend on production. Agents still need `confirm=true`. |
 
@@ -103,10 +105,63 @@ bugbash refund --confirm  # return unspent escrow
 
 Use `--prod` on `plan` (or `GIBWORK_ENV=production`) to target production. The environment is fixed per run, so a run's task ids never get mixed across environments.
 
+## Generate a test plan from a URL
+
+Writing test cases is often the slowest part. `bugbash generate` reads a feature page and drafts the plan for you.
+
+```bash
+bugbash generate https://staging.acme-shop.example/checkout --out testplan.yaml
+```
+
+```
+Read Checkout · Acme Shop (via browser)
+  2 forms, 9 fields, 1 actions, 4 nav links
+
+12 draft cases by the rule-based writer
+
+  TC-01  high    Checkout · Acme Shop: page loads correctly
+  TC-02  high    Delivery and payment: submit with valid details  • needs review
+  TC-03  high    Delivery and payment: required fields are enforced
+  TC-04  medium  Delivery and payment: invalid email is rejected
+  TC-05  medium  Delivery and payment: invalid phone number is rejected
+  TC-06  medium  Delivery and payment: Quantity limits are enforced
+  TC-07  medium  Delivery and payment: invalid coupon code is handled
+  TC-08  medium  Delivery and payment: I agree to the terms must be ticked
+  TC-09  high    Delivery and payment: double tap does not submit twice  • needs review
+  …
+```
+
+**How it works**
+
+1. **Read the page.** If Playwright is installed, the page is rendered in a headless browser, so JavaScript apps (React, Vue, Next.js) are read fully. Otherwise it falls back to a plain fetch, which works for server-rendered pages. `--html page.html` reads a saved file instead.
+2. **Extract what can be tested.** This covers forms, field labels and types, required fields, length and number limits, patterns, select and radio options, buttons outside forms and navigation links. Cookie banners and close buttons are ignored.
+3. **Write cases.**
+   - The **rule-based writer** is the default and needs no API key. It writes the happy path, required-field checks and per-field validation (email, phone, number range, length, required checkbox, invalid coupon). For payment-like forms it adds a double-submit check. It also adds mobile layout, navigation and keyboard-only cases, each with concrete inputs taken from the page's own constraints.
+   - The **AI writer** is used when `ANTHROPIC_API_KEY` is set. It sends the page model and the rule-based baseline to Claude and gets back sharper, more realistic cases. Add `--describe "Coupon SAVE10 gives 10% off orders over ₦20,000"` to give it business rules the page can't show. Its output is schema-checked, and if anything goes wrong it falls back to the rule-based cases.
+4. **Save as a draft.** The YAML is marked `draft: true`, and cases where the expected result needs product knowledge carry a `reviewNote`. `bugbash plan` refuses a draft and lists the open review notes, so nobody pays testers to run unreviewed, machine-written cases.
+
+| Option | Meaning |
+| --- | --- |
+| `-o, --out <file>` | Output file (default `testplan.yaml`). Add `--force` to overwrite. |
+| `--describe <text>` | What the feature should do, for the AI writer |
+| `--max-cases <n>` | Cap on cases (default 12). High-priority cases are kept first. |
+| `--render auto\|browser\|fetch` | How to read the page. `auto` uses Playwright if installed. |
+| `--cookies <value>` | For pages behind a login. Either a cookie header (`session=abc; csrftoken=xyz`) or a Playwright storage-state JSON file. |
+| `--html <file>` | Read a saved HTML file instead of the URL |
+| `--ai` / `--no-ai` | Require or disable the AI writer |
+| `--name <name>` | Plan name |
+
+To enable browser rendering, run `npm i playwright && npx playwright install chromium`. For the AI writer, set `ANTHROPIC_API_KEY`. `BUGBASH_AI_MODEL` overrides the default model, `claude-sonnet-5-5`.
+
+A full generated draft from the sample checkout page is in [`examples/sample-output/generated-testplan.yaml`](examples/sample-output/generated-testplan.yaml).
+
+**Limits.** The generator only sees the page, not the intent. It knows there is a coupon field, but not what discount a code should give. Multi-step flows need one URL per step, or `--describe` with the AI writer. Treat the output as a strong first draft for a person to finish.
+
 ## Commands
 
 | Command | What it does | Moves money |
 | --- | --- | --- |
+| `bugbash generate <url> [options]` | Drafts a test plan from a feature page | no |
 | `bugbash init [file]` | Writes the sample plan | no |
 | `bugbash plan <file> [--mock] [--prod] [--show <batch>]` | Validates, batches, prices and prints a bounty preview | no |
 | `bugbash publish [--confirm] [--batch <id>]` | Creates and funds bounties. Skips batches that are already published. | with `--confirm` |
@@ -187,7 +242,7 @@ The parser accepts HTML, bullets, lowercase text, "passed" or "failed", and `:`,
 }
 ```
 
-The tools are `bugbash_plan`, `bugbash_preview_bounty`, `bugbash_publish`, `bugbash_status`, `bugbash_collect`, `bugbash_triage` and `bugbash_report`.
+The tools are `bugbash_generate_plan`, `bugbash_plan`, `bugbash_preview_bounty`, `bugbash_publish`, `bugbash_status`, `bugbash_collect`, `bugbash_triage` and `bugbash_report`.
 
 Spend guards work like this. `bugbash_publish`, and `bugbash_triage` with `apply=true`, refuse unless the agent passes `confirm=true`. The refusal message tells the agent to show the user the cost first. On production they also need `BUGBASH_MCP_ALLOW_PRODUCTION=1`, which only the person running the server can set.
 
@@ -248,6 +303,7 @@ src/
   parser.ts     tolerant result parser and payout validation
   aggregate.ts  case × device consensus and release gate
   report.ts     Markdown, CSV, JUnit XML and JSON writers
+  generate/     URL → page model → draft test plan (rule-based and AI writers)
   test/         node:test unit and end-to-end tests
 examples/       sample plan, demo scripts, CI workflow, sample output
 ```
