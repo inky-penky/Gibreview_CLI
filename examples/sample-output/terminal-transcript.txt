@@ -1,0 +1,213 @@
+
+[1;36m$ bugbash init testplan.yaml[0m
+✓ Wrote testplan.yaml. Edit the cases and devices, then run bugbash plan testplan.yaml
+
+[1;36m$ bugbash plan testplan.yaml --mock[0m
+Run acme-shop-checkout-regre-20261007-hsjr  mock
+8 cases × 3 device classes → 6 bounties
+
+  android-chrome-1      5 cases  pool 4.00 USDC  [QA] Acme Shop checkout regression v2.3.0 on Android phone (Chrome) (part 1/2)
+  android-chrome-2      2 cases  pool 4.00 USDC  [QA] Acme Shop checkout regression v2.3.0 on Android phone (Chrome) (part 2/2)
+  ios-safari-1          5 cases  pool 4.00 USDC  [QA] Acme Shop checkout regression v2.3.0 on iPhone (Safari) (part 1/2)
+  ios-safari-2          2 cases  pool 4.00 USDC  [QA] Acme Shop checkout regression v2.3.0 on iPhone (Safari) (part 2/2)
+  desktop-1             5 cases  pool 4.00 USDC  [QA] Acme Shop checkout regression v2.3.0 on Desktop browser (part 1/2)
+  desktop-2             2 cases  pool 4.00 USDC  [QA] Acme Shop checkout regression v2.3.0 on Desktop browser (part 2/2)
+
+Budget 24.00 USDC (2.00 per tester × 2 testers × 6 bounties), plus Gibwork platform fees
+
+Next bugbash publish --confirm
+
+[1;36m$ bugbash plan testplan.yaml --mock --show ios-safari-1[0m
+[QA] Acme Shop checkout regression v2.3.0 on iPhone (Safari) (part 1/2)
+────────────────────────────────────────────────────────────
+Run 5 manual test cases on a real iPhone (Safari) device and report the result of each one in the format below.
+
+Build under test
+
+https://staging.acme-shop.example (release v2.3.0)
+
+Log in with tester@acme.example / Test1234. Use the test card 4084 0840 8408 4081, any future expiry, CVV 408, OTP 123456. No real money is charged on staging.
+
+Device notes: iOS 16 or newer.
+
+Test cases
+
+TC-01. Guest checkout with card [high]
+
+  - Open the build URL without logging in
+  - Add any in-stock product to the cart
+  - Go to checkout and choose "Continue as guest"
+  - Fill the delivery form and pay with the test card
+
+Expected: Order confirmation page shows an order number and the cart is empty
+
+TC-02. Apply a coupon at checkout [high]
+
+Before you start: Logged in as the tester account with at least one item in the cart
+
+  - Go to checkout
+  - Enter coupon code SAVE10 and tap Apply
+  - Complete payment with the test card
+
+Expected: Total drops by 10 percent, the Pay button stays enabled and the order is placed
+
+TC-03. Order confirmation email [medium]
+
+  - Place any order using an email address you can check
+  - Watch your inbox
+
+Expected: Confirmation email with the same order number arrives within 2 minutes
+
+TC-04. Delivery address validation [medium]
+
+  - At checkout, leave the phone number empty and try to continue
+  - Enter a 7-digit phone number and try again
+  - Enter a valid 11-digit number
+
+Expected: Clear inline errors for the first two attempts; continues normally on the third
+
+TC-05. Cart survives a page refresh [low]
+
+  - Add two different products to the cart
+  - Refresh the page or close and reopen the tab
+
+Expected: Both products are still in the cart with the same quantities
+
+How to submit
+
+Paste this block into your submission and fill in every line. Pick exactly one of PASS, FAIL or BLOCKED per case. Every FAIL needs a short description and a link to a screenshot or screen recording. Submissions that skip cases or have no evidence for failures are not paid.
+
+BUGBASH RESULT
+
+[1;36m$ bugbash publish --confirm[0m
+  Publishing android-chrome-1…
+  Publishing android-chrome-2…
+  Publishing ios-safari-1…
+  Publishing ios-safari-2…
+  Publishing desktop-1…
+  Publishing desktop-2…
+✓ android-chrome-1     task fe44aade-7646-48f6-8d1e-18f6c6152ce5  tx 11d877b6b8e7eb42263e8893054c44ef8bff9fbbf9a3
+✓ android-chrome-2     task 0171b43a-3fae-49a6-9d32-f32f4152d3be  tx 7c2147745e6a62999534ceeb6745395329d7bc2e18fe
+✓ ios-safari-1         task 3c815d42-a4eb-490a-9bf0-1ca46c24f284  tx 54aa50290a836bd58f5d53d8ebec733620fdbf28f429
+✓ ios-safari-2         task e278d53d-6208-474a-a708-49d391b64014  tx 4a06ca36a8163c05dd756097de8f194181a39f6e2ae6
+✓ desktop-1            task 53572156-360f-4472-9388-fbc7614b573f  tx 2d4fd226160f41633e8fe897a8c46c7b95299ede236d
+✓ desktop-2            task 7e23cba0-81d8-438b-9cee-afc9c8830583  tx 5302426b6499bc190b1bee001cf52762a6b7514f05b4
+
+[1;36m$ bugbash collect[0m
+  Collecting android-chrome-1…
+  Collecting android-chrome-2…
+  Collecting ios-safari-1…
+  Collecting ios-safari-2…
+  Collecting desktop-1…
+  Collecting desktop-2…
+✓ 24 submissions fetched, 24 new
+  android-chrome-1     2 valid  1 incomplete  1 invalid
+  android-chrome-2     2 valid  1 incomplete  1 invalid
+  ios-safari-1         2 valid  1 incomplete  1 invalid
+  ios-safari-2         2 valid  1 incomplete  1 invalid
+  desktop-1            2 valid  1 incomplete  1 invalid
+  desktop-2            2 valid  1 incomplete  1 invalid
+
+Next bugbash triage
+
+[1;36m$ bugbash triage[0m
+  REJECT @quickcash99    android-chrome-1   No BUGBASH RESULT block found. Please resubmit using the template in the bounty, one line per case.
+  PAY    @ada_qa         android-chrome-1   2.00 USDC  All 5 cases reported with evidence
+  PAY    @tunde.tests    android-chrome-1   2.00 USDC  All 5 cases reported with evidence
+  REJECT @kemi_bugs      android-chrome-1   Incomplete. Missing results for TC-05. TC-02 is FAIL without an evidence link. Please resubmit with every case filled in and an evidence link for each FAIL.
+  REJECT @quickcash99    android-chrome-2   No BUGBASH RESULT block found. Please resubmit using the template in the bounty, one line per case.
+  PAY    @ada_qa         android-chrome-2   2.00 USDC  All 2 cases reported with evidence
+  PAY    @tunde.tests    android-chrome-2   2.00 USDC  All 2 cases reported with evidence
+  REJECT @kemi_bugs      android-chrome-2   Incomplete. Missing results for TC-07. Please resubmit with every case filled in and an evidence link for each FAIL.
+  REJECT @quickcash99    ios-safari-1       No BUGBASH RESULT block found. Please resubmit using the template in the bounty, one line per case.
+  PAY    @ada_qa         ios-safari-1       2.00 USDC  All 5 cases reported with evidence
+  PAY    @tunde.tests    ios-safari-1       2.00 USDC  All 5 cases reported with evidence
+  REJECT @kemi_bugs      ios-safari-1       Incomplete. Missing results for TC-05. Please resubmit with every case filled in and an evidence link for each FAIL.
+  REJECT @quickcash99    ios-safari-2       No BUGBASH RESULT block found. Please resubmit using the template in the bounty, one line per case.
+  PAY    @ada_qa         ios-safari-2       2.00 USDC  All 2 cases reported with evidence
+  PAY    @tunde.tests    ios-safari-2       2.00 USDC  All 2 cases reported with evidence
+  REJECT @kemi_bugs      ios-safari-2       Incomplete. Missing results for TC-07. Please resubmit with every case filled in and an evidence link for each FAIL.
+  REJECT @quickcash99    desktop-1          No BUGBASH RESULT block found. Please resubmit using the template in the bounty, one line per case.
+  PAY    @ada_qa         desktop-1          2.00 USDC  All 5 cases reported with evidence
+  PAY    @tunde.tests    desktop-1          2.00 USDC  All 5 cases reported with evidence
+  REJECT @kemi_bugs      desktop-1          Incomplete. Missing results for TC-05. Please resubmit with every case filled in and an evidence link for each FAIL.
+  REJECT @quickcash99    desktop-2          No BUGBASH RESULT block found. Please resubmit using the template in the bounty, one line per case.
+  PAY    @ada_qa         desktop-2          2.00 USDC  All 2 cases reported with evidence
+  PAY    @tunde.tests    desktop-2          2.00 USDC  All 2 cases reported with evidence
+  REJECT @kemi_bugs      desktop-2          Incomplete. Missing results for TC-08. Please resubmit with every case filled in and an evidence link for each FAIL.
+
+Dry run. 12 payouts and 12 rejections planned. Re-run with --apply to execute.
+
+[1;36m$ bugbash triage --apply[0m
+Run acme-shop-checkout-regre-20261007-28nj  mock  last collected 2026-10-07T13:44:28.801Z
+  android-chrome-1     live        4 submissions  2/2 paid  fe44aade-7646-48f6-8d1e-18f6c6152ce5
+  android-chrome-2     live        4 submissions  2/2 paid  0171b43a-3fae-49a6-9d32-f32f4152d3be
+  ios-safari-1         live        4 submissions  2/2 paid  3c815d42-a4eb-490a-9bf0-1ca46c24f284
+  ios-safari-2         live        4 submissions  2/2 paid  e278d53d-6208-474a-a708-49d391b64014
+  desktop-1            live        4 submissions  2/2 paid  53572156-360f-4472-9388-fbc7614b573f
+  desktop-2            live        4 submissions  2/2 paid  7e23cba0-81d8-438b-9cee-afc9c8830583
+
+[1;36m$ bugbash report[0m
+Release gate FAIL
+  • TC-02 [high] fails on Android phone (Chrome) (2 fail / 0 pass)
+
+  PASS      TC-01    Guest checkout with card                 android-chrome:PASS  ios-safari:PASS  desktop:PASS
+  FAIL      TC-02    Apply a coupon at checkout               android-chrome:FAIL  ios-safari:PASS  desktop:PASS
+  DISPUTED  TC-03    Order confirmation email                 android-chrome:PASS  ios-safari:DISPUTED  desktop:PASS
+  PASS      TC-04    Delivery address validation              android-chrome:PASS  ios-safari:PASS  desktop:PASS
+  PASS      TC-05    Cart survives a page refresh             android-chrome:PASS  ios-safari:PASS  desktop:PASS
+  PASS      TC-06    Pay with bank transfer                   android-chrome:PASS  ios-safari:PASS  desktop:PASS
+  PASS      TC-07    Checkout on a slow 3G connection         android-chrome:PASS  ios-safari:PASS
+  PASS      TC-08    Keyboard-only checkout                   desktop:PASS
+
+Paid 24.00 USDC to 12 testers
+✓ bugbash-report/report.md
+✓ bugbash-report/results.csv
+✓ bugbash-report/junit.xml
+✓ bugbash-report/summary.json
+
+Exit code 1 (0 pass, 1 release blocked, 2 coverage gaps)
+
+[1;36m$ head -40 bugbash-report/report.md[0m
+# QA report · Acme Shop checkout regression v2.3.0
+
+Run `acme-shop-checkout-regre-20261007-28nj` · environment **mock** · generated 2026-10-07T13:44:30.302Z
+Build under test https://staging.acme-shop.example
+
+## Release gate ❌ FAIL, release blocked
+
+- TC-02 [high] fails on Android phone (Chrome) (2 fail / 0 pass)
+
+Testers submitted **24** results, 12 valid, 6 incomplete, 6 invalid. 12 approved, 12 rejected, **24.00 USDC** paid out.
+
+## Results matrix
+
+| Case | Priority | Android phone (Chrome) | iPhone (Safari) | Desktop browser |
+| --- | --- | --- | --- | --- |
+| TC-01 Guest checkout with card | high | ✅ pass (2) | ✅ pass (2) | ✅ pass (2) |
+| TC-02 Apply a coupon at checkout | high | ❌ fail (2) | ✅ pass (2) | ✅ pass (2) |
+| TC-03 Order confirmation email | medium | ✅ pass (2) | ⚠️ disputed (2) | ✅ pass (2) |
+| TC-04 Delivery address validation | medium | ✅ pass (2) | ✅ pass (2) | ✅ pass (2) |
+| TC-05 Cart survives a page refresh | low | ✅ pass (2) | ✅ pass (2) | ✅ pass (2) |
+| TC-06 Pay with bank transfer | high | ✅ pass (2) | ✅ pass (2) | ✅ pass (2) |
+| TC-07 Checkout on a slow 3G connection | medium | ✅ pass (2) | ✅ pass (2) | n/a |
+| TC-08 Keyboard-only checkout | low | n/a | n/a | ✅ pass (2) |
+
+## Failures and blockers
+
+### TC-02 Apply a coupon at checkout on Android phone (Chrome) (fail)
+
+Expected Total drops by 10 percent, the Pay button stays enabled and the order is placed
+
+- **FAIL** by @ada_qa (Samsung Galaxy A14, Android 14, Chrome 129). Pay button stays disabled after applying coupon SAVE10, order cannot be placed · evidence https://drive.example.com/bugbash/ada_qa/tc-02.mp4
+- **FAIL** by @tunde.tests (Tecno Spark 20, Android 13, Chrome 128). Pay button stays disabled after applying coupon SAVE10, order cannot be placed · evidence https://drive.example.com/bugbash/tunde.tests/tc-02.mp4
+
+### TC-03 Order confirmation email on iPhone (Safari) (disputed)
+
+Expected Confirmation email with the same order number arrives within 2 minutes
+
+- **FAIL** by @ada_qa (iPhone 12, iOS 17.6, Safari). Confirmation email arrived after 9 minutes, expected under 2 · evidence https://drive.example.com/bugbash/ada_qa/tc-03.mp4
+- **PASS** by @tunde.tests (iPhone SE (2nd gen), iOS 16.7, Safari). email arrived in about 40 seconds
+
+
+Working directory /tmp/bugbash-demo

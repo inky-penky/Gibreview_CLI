@@ -1,0 +1,48 @@
+{
+  "name": "gibwork-bugbash",
+  "version": "0.1.0",
+  "description": "Crowdsourced manual QA from your terminal. Turn a test plan into Gibwork bounties, collect tester results, and ship a release-gate report.",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node --test dist/test/*.test.js",
+    "start": "node dist/cli.js",
+    "mcp": "node dist/mcp.js",
+    "demo": "bash examples/demo.sh",
+    "prepare": "tsc"
+  },
+  "keywords": [
+    "gibwork",
+    "qa",
+    "testing",
+    "mcp",
+    "solana",
+    "cli"
+  ],
+  "author": "Ahmad",
+  "license": "MIT",
+  "dependencies": {
+    "@gibwork/sdk": "^0.2.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "commander": "^15.0.0",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "typescript": "^5.9.3"
+  },
+  "type": "module",
+  "bin": {
+    "bugbash": "dist/cli.js",
+    "bugbash-mcp": "dist/mcp.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "dist",
+    "examples",
+    "README.md"
+  ]
+}

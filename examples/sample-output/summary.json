@@ -1,0 +1,244 @@
+{
+  "runId": "acme-shop-checkout-regre-20261007-28nj",
+  "gate": {
+    "verdict": "FAIL",
+    "reasons": [
+      "TC-02 [high] fails on Android phone (Chrome) (2 fail / 0 pass)"
+    ]
+  },
+  "totals": {
+    "submissions": 24,
+    "valid": 12,
+    "incomplete": 6,
+    "invalid": 6,
+    "approved": 12,
+    "rejected": 12,
+    "paid": "24.00"
+  },
+  "cases": [
+    {
+      "id": "TC-01",
+      "priority": "high",
+      "outcome": "PASS",
+      "cells": [
+        {
+          "caseId": "TC-01",
+          "deviceId": "android-chrome",
+          "outcome": "PASS",
+          "pass": 2,
+          "fail": 0,
+          "blocked": 0
+        },
+        {
+          "caseId": "TC-01",
+          "deviceId": "ios-safari",
+          "outcome": "PASS",
+          "pass": 2,
+          "fail": 0,
+          "blocked": 0
+        },
+        {
+          "caseId": "TC-01",
+          "deviceId": "desktop",
+          "outcome": "PASS",
+          "pass": 2,
+          "fail": 0,
+          "blocked": 0
+        }
+      ]
+    },
+    {
+      "id": "TC-02",
+      "priority": "high",
+      "outcome": "FAIL",
+      "cells": [
+        {
+          "caseId": "TC-02",
+          "deviceId": "android-chrome",
+          "outcome": "FAIL",
+          "pass": 0,
+          "fail": 2,
+          "blocked": 0
+        },
+        {
+          "caseId": "TC-02",
+          "deviceId": "ios-safari",
+          "outcome": "PASS",
+          "pass": 2,
+          "fail": 0,
+          "blocked": 0
+        },
+        {
+          "caseId": "TC-02",
+          "deviceId": "desktop",
+          "outcome": "PASS",
+          "pass": 2,
+          "fail": 0,
+          "blocked": 0
+        }
+      ]
+    },
+    {
+      "id": "TC-03",
+      "priority": "medium",
+      "outcome": "DISPUTED",
+      "cells": [
+        {
+          "caseId": "TC-03",
+          "deviceId": "android-chrome",
+          "outcome": "PASS",
+          "pass": 2,
+          "fail": 0,
+          "blocked": 0
+        },
+        {
+          "caseId": "TC-03",
+          "deviceId": "ios-safari",
+          "outcome": "DISPUTED",
+          "pass": 1,
+          "fail": 1,
+          "blocked": 0
+        },
+        {
+          "caseId": "TC-03",
+          "deviceId": "desktop",
+          "outcome": "PASS",
+          "pass": 2,
+          "fail": 0,
+          "blocked": 0
+        }
+      ]
+    },
+    {
+      "id": "TC-04",
+      "priority": "medium",
+      "outcome": "PASS",
+      "cells": [
+        {
+          "caseId": "TC-04",
+          "deviceId": "android-chrome",
+          "outcome": "PASS",
+          "pass": 2,
+          "fail": 0,
+          "blocked": 0
+        },
+        {
+          "caseId": "TC-04",
+          "deviceId": "ios-safari",
+          "outcome": "PASS",
+          "pass": 2,
+          "fail": 0,
+          "blocked": 0
+        },
+        {
+          "caseId": "TC-04",
+          "deviceId": "desktop",
+          "outcome": "PASS",
+          "pass": 2,
+          "fail": 0,
+          "blocked": 0
+        }
+      ]
+    },
+    {
+      "id": "TC-05",
+      "priority": "low",
+      "outcome": "PASS",
+      "cells": [
+        {
+          "caseId": "TC-05",
+          "deviceId": "android-chrome",
+          "outcome": "PASS",
+          "pass": 1,
+          "fail": 0,
+          "blocked": 1
+        },
+        {
+          "caseId": "TC-05",
+          "deviceId": "ios-safari",
+          "outcome": "PASS",
+          "pass": 1,
+          "fail": 0,
+          "blocked": 1
+        },
+        {
+          "caseId": "TC-05",
+          "deviceId": "desktop",
+          "outcome": "PASS",
+          "pass": 1,
+          "fail": 0,
+          "blocked": 1
+        }
+      ]
+    },
+    {
+      "id": "TC-06",
+      "priority": "high",
+      "outcome": "PASS",
+      "cells": [
+        {
+          "caseId": "TC-06",
+          "deviceId": "android-chrome",
+          "outcome": "PASS",
+          "pass": 2,
+          "fail": 0,
+          "blocked": 0
+        },
+        {
+          "caseId": "TC-06",
+          "deviceId": "ios-safari",
+          "outcome": "PASS",
+          "pass": 2,
+          "fail": 0,
+          "blocked": 0
+        },
+        {
+          "caseId": "TC-06",
+          "deviceId": "desktop",
+          "outcome": "PASS",
+          "pass": 2,
+          "fail": 0,
+          "blocked": 0
+        }
+      ]
+    },
+    {
+      "id": "TC-07",
+      "priority": "medium",
+      "outcome": "PASS",
+      "cells": [
+        {
+          "caseId": "TC-07",
+          "deviceId": "android-chrome",
+          "outcome": "PASS",
+          "pass": 1,
+          "fail": 0,
+          "blocked": 1
+        },
+        {
+          "caseId": "TC-07",
+          "deviceId": "ios-safari",
+          "outcome": "PASS",
+          "pass": 1,
+          "fail": 0,
+          "blocked": 1
+        }
+      ]
+    },
+    {
+      "id": "TC-08",
+      "priority": "low",
+      "outcome": "PASS",
+      "cells": [
+        {
+          "caseId": "TC-08",
+          "deviceId": "desktop",
+          "outcome": "PASS",
+          "pass": 1,
+          "fail": 0,
+          "blocked": 1
+        }
+      ]
+    }
+  ]
+}

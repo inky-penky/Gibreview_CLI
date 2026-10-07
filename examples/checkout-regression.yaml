@@ -1,0 +1,110 @@
+# BugBash test plan
+# Each device class × chunk of cases becomes one Gibwork bounty.
+# Testers paste a BUGBASH RESULT block back; bugbash parses it, pays complete work and builds the report.
+
+name: Acme Shop checkout regression
+release: v2.3.0
+build:
+  url: https://staging.acme-shop.example
+  notes: >
+    Log in with tester@acme.example / Test1234. Use the test card 4084 0840 8408 4081, any future expiry, CVV 408, OTP 123456.
+    No real money is charged on staging.
+
+reward:
+  symbol: USDC
+  # mintAddress defaults to USDC. Override it for another SPL token.
+  perTester: "2.00"      # paid to each accepted tester
+  testersPerBatch: 2     # independent testers per bounty, so failures get confirmed
+
+batchSize: 5             # max cases per bounty, keeps each job finishable in ~20 minutes
+deadlineHours: 48
+tags: [QA, Testing, Mobile]
+
+gate:
+  failOn: [high]             # a FAIL or disputed result on these priorities blocks the release
+  requireCoverageOn: [high]  # these must have at least one usable result on every device
+
+devices:
+  - id: android-chrome
+    label: Android phone (Chrome)
+    notes: Android 12 or newer. Budget devices welcome, they are where most of our users are.
+  - id: ios-safari
+    label: iPhone (Safari)
+    notes: iOS 16 or newer.
+  - id: desktop
+    label: Desktop browser
+    notes: Any current Chrome, Firefox, Edge or Safari on a laptop or desktop.
+
+cases:
+  - id: TC-01
+    title: Guest checkout with card
+    priority: high
+    steps:
+      - Open the build URL without logging in
+      - Add any in-stock product to the cart
+      - Go to checkout and choose "Continue as guest"
+      - Fill the delivery form and pay with the test card
+    expected: Order confirmation page shows an order number and the cart is empty
+
+  - id: TC-02
+    title: Apply a coupon at checkout
+    priority: high
+    preconditions: Logged in as the tester account with at least one item in the cart
+    steps:
+      - Go to checkout
+      - Enter coupon code SAVE10 and tap Apply
+      - Complete payment with the test card
+    expected: Total drops by 10 percent, the Pay button stays enabled and the order is placed
+
+  - id: TC-03
+    title: Order confirmation email
+    priority: medium
+    steps:
+      - Place any order using an email address you can check
+      - Watch your inbox
+    expected: Confirmation email with the same order number arrives within 2 minutes
+
+  - id: TC-04
+    title: Delivery address validation
+    priority: medium
+    steps:
+      - At checkout, leave the phone number empty and try to continue
+      - Enter a 7-digit phone number and try again
+      - Enter a valid 11-digit number
+    expected: Clear inline errors for the first two attempts; continues normally on the third
+
+  - id: TC-05
+    title: Cart survives a page refresh
+    priority: low
+    steps:
+      - Add two different products to the cart
+      - Refresh the page or close and reopen the tab
+    expected: Both products are still in the cart with the same quantities
+
+  - id: TC-06
+    title: Pay with bank transfer
+    priority: high
+    steps:
+      - Start checkout with any item
+      - Choose "Pay with bank transfer"
+      - Tap "I've sent the money" without transferring
+    expected: Order stays in "Awaiting payment" and the app explains what happens next
+
+  - id: TC-07
+    title: Checkout on a slow 3G connection
+    priority: medium
+    devices: [android-chrome, ios-safari]
+    preconditions: Turn on a 3G or "slow network" setting, or test on real mobile data with weak signal
+    steps:
+      - Add an item to the cart and go to checkout
+      - Pay with the test card
+    expected: Loading states are visible, nothing is charged twice and the order is placed once
+
+  - id: TC-08
+    title: Keyboard-only checkout
+    priority: low
+    devices: [desktop]
+    steps:
+      - Using only Tab, Shift+Tab, Enter and Space, add an item to the cart
+      - Complete checkout with the test card
+    expected: Every control is reachable, focus is always visible and the order is placed
