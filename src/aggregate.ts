@@ -1,6 +1,6 @@
 import type { RunState, SubmissionState } from './state.js';
 import type { CaseResult } from './parser.js';
-import type { TestCase } from './plan.js';
+import { fromCents, toCents, type TestCase } from './plan.js';
 
 export type CellOutcome = 'PASS' | 'FAIL' | 'DISPUTED' | 'BLOCKED' | 'NOT_RUN';
 
@@ -31,15 +31,23 @@ export type GateVerdict = 'PASS' | 'FAIL' | 'INCOMPLETE';
 export interface Aggregate {
   cases: CaseSummary[];
   gate: { verdict: GateVerdict; reasons: string[] };
-  totals: { submissions: number; valid: number; incomplete: number; invalid: number; approved: number; rejected: number; paid: string };
+  totals: { submissions: number; valid: number; incomplete: number; invalid: number; approved: number; rejected: number; awaitingTriage: number; needsAttention: number; paid: string };
 }
 
 const SEVERITY: Record<CellOutcome, number> = { FAIL: 4, DISPUTED: 3, BLOCKED: 2, NOT_RUN: 1, PASS: 0 };
 
-/** Submissions whose results we trust enough to count. Spam and rejected work never move the matrix. */
-function counted(s: SubmissionState): boolean {
-  return s.parsed.verdict !== 'invalid' && s.reviewStatus !== 'rejected';
+/**
+ * Submissions whose results we trust enough to count: anything approved on Gibwork, plus complete,
+ * evidenced work that is not rejected. Incomplete work awaiting triage (e.g. a FAIL with no evidence)
+ * and spam never move the matrix, so running report before triage cannot block or pass a release on it.
+ */
+export function counted(s: SubmissionState): boolean {
+  if (s.reviewStatus === 'rejected') return false;
+  return s.reviewStatus === 'approved' || s.parsed.verdict === 'valid';
 }
+
+/** Incomplete submissions still waiting for triage. Reported so nobody mistakes them for counted results. */
+const awaitingTriage = (s: SubmissionState) => s.reviewStatus === 'pending' && s.parsed.verdict === 'incomplete';
 
 export function aggregate(run: RunState): Aggregate {
   const subs = Object.values(run.submissions);
@@ -92,13 +100,7 @@ export function aggregate(run: RunState): Aggregate {
   }
   if (verdict === 'PASS') reasons.push('No blocking failures and every required case has coverage');
 
-  let paidCents = 0;
-  for (const s of subs) {
-    if (s.decision?.action === 'approve' && s.decision.amount) {
-      const [w, f = ''] = s.decision.amount.split('.');
-      paidCents += Number(w) * 100 + Number((f + '00').slice(0, 2));
-    }
-  }
+  const paidCents = subs.reduce((n, s) => n + (s.decision?.action === 'approve' && s.decision.amount ? toCents(s.decision.amount) : 0), 0);
 
   return {
     cases,
@@ -110,7 +112,9 @@ export function aggregate(run: RunState): Aggregate {
       invalid: subs.filter((s) => s.parsed.verdict === 'invalid').length,
       approved: subs.filter((s) => s.reviewStatus === 'approved').length,
       rejected: subs.filter((s) => s.reviewStatus === 'rejected').length,
-      paid: `${Math.floor(paidCents / 100)}.${String(paidCents % 100).padStart(2, '0')}`,
+      awaitingTriage: subs.filter(awaitingTriage).length,
+      needsAttention: subs.filter((s) => s.reviewStatus === 'other').length,
+      paid: fromCents(paidCents),
     },
   };
 }

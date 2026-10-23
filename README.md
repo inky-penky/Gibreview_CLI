@@ -50,7 +50,7 @@ git clone https://github.com/inky-penky/Gibwork_Bug_Bash_CLI.git gibwork-bugbash
 cd gibwork-bugbash
 npm install          # also builds dist/ via the prepare script
 npm link             # optional, puts `bugbash` and `bugbash-mcp` on your PATH
-npm test             # 29 tests, including a full end-to-end run on the simulator
+npm test             # 35 tests, including a full end-to-end run on the simulator
 ```
 
 Without `npm link`, replace `bugbash` with `node dist/cli.js` in the commands below.
@@ -343,7 +343,9 @@ Paid 24.00 USDC to 12 testers
 - **Ambiguous transactions are never retried.** If the SDK raises `GibworkAmbiguousSubmitError`, the intent id is recorded, the batch is marked *unresolved* and the run stops. This prevents paying twice.
 - **Rate limits.** A `429` stops publishing cleanly and reports the `retryAfter` value.
 - **Payout cap.** Triage never approves more testers than a bounty's pool covers. Extra valid work is held, not paid.
-- **Spam and rejected work never change the results matrix.**
+- **Only checked work changes the results matrix.** Spam, rejected work and incomplete submissions still waiting for triage are left out, so running `report` early can't block or pass a release on a FAIL with no evidence. The report says how many are waiting.
+- **Unknown Gibwork statuses are never guessed.** A submission status BugBash doesn't recognise (such as `CLOSED`) takes up a tester slot, is never paid or rejected automatically, and is flagged in triage and the report for a person to check.
+- **One process per run.** `publish`, `collect`, `triage`, `refund` and the matching MCP tools hold a lock on the run and work on a fresh copy, so a terminal and an agent can't pay or refund the same run at the same time. A lock left by a crashed process is cleared automatically.
 - **Keys stay local.** The key is passed to the SDK's Node signer and never written to state or logs.
 
 ## Project layout

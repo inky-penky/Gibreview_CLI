@@ -120,10 +120,18 @@ export async function publishRun(run: RunState, client: GibworkLike, store: Stor
 
 // ---------- collect ----------
 
-function mapReviewStatus(status: string): ReviewStatus {
+/** Payout started or finished on Gibwork. These hold a paid slot. */
+const APPROVED_STATUSES = new Set(['CLAIMED', 'CLAIMING', 'WAITING_CLAIM', 'PROCESSING']);
+
+/**
+ * Anything unrecognised (CLOSED, or a status added later) maps to 'other' rather than a guess:
+ * guessing 'approved' would hide it in the paid count, guessing 'pending' could pay it twice.
+ */
+export function mapReviewStatus(status: string): ReviewStatus {
   if (status === 'OPEN') return 'pending';
   if (status === 'REJECTED') return 'rejected';
-  return 'approved';
+  if (APPROVED_STATUSES.has(status)) return 'approved';
+  return 'other';
 }
 
 export interface CollectResult {
@@ -152,6 +160,7 @@ export async function collectRun(run: RunState, client: GibworkLike, store: Stor
           username: user,
           createdAt: s.createdAt,
           reviewStatus: mapReviewStatus(s.status),
+          remoteStatus: s.status,
           content: s.content,
           parsed,
           ...(existing?.decision ? { decision: existing.decision } : {}),
@@ -198,7 +207,11 @@ export function planTriage(run: RunState): TriageAction[] {
     const subs = Object.values(run.submissions)
       .filter((s) => s.batchId === batch.id)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    let slots = testersPerBatch - subs.filter((s) => s.reviewStatus === 'approved').length;
+    // Unrecognised statuses take a slot too, so an unclear payout can never lead to paying an extra tester.
+    let slots = testersPerBatch - subs.filter((s) => s.reviewStatus === 'approved' || s.reviewStatus === 'other').length;
+    for (const s of subs.filter((x) => x.reviewStatus === 'other')) {
+      actions.push({ submissionId: s.id, batchId: batch.id, username: s.username, action: 'hold', reason: `Gibwork status ${s.remoteStatus ?? 'unknown'} is not one BugBash recognises. Check it on Gibwork before paying anyone else on this bounty` });
+    }
     for (const s of subs.filter((x) => x.reviewStatus === 'pending')) {
       if (s.parsed.verdict === 'valid') {
         if (slots > 0) {

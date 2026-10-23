@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rename, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Batch, TestPlan } from './plan.js';
 import type { ParsedSubmission } from './parser.js';
@@ -16,7 +16,8 @@ export interface BatchState extends Batch {
   refundedAt?: string;
 }
 
-export type ReviewStatus = 'pending' | 'approved' | 'rejected';
+/** 'other' is a Gibwork status BugBash does not recognise. It fills a slot, is never auto-triaged and needs a human look. */
+export type ReviewStatus = 'pending' | 'approved' | 'rejected' | 'other';
 
 export interface SubmissionState {
   id: string;
@@ -25,6 +26,8 @@ export interface SubmissionState {
   username: string;
   createdAt: string;
   reviewStatus: ReviewStatus;
+  /** Raw Gibwork submission status, kept so 'other' can be explained. */
+  remoteStatus?: string;
   content: string;
   parsed: ParsedSubmission;
   decision?: { action: 'approve' | 'reject'; at: string; amount?: string; reason?: string; txHash?: string };
@@ -66,6 +69,43 @@ export class Store {
     }
   }
 
+  /**
+   * Runs fn with an exclusive lock on the run and a copy loaded inside the lock, so a CLI and an agent
+   * (or two terminals) can never publish, pay or refund the same run at the same time.
+   */
+  async withRun<T>(runId: string | undefined, fn: (run: RunState) => Promise<T>): Promise<T> {
+    const id = runId ?? (await this.currentRunId());
+    if (!id) throw new Error('No active run. Start one with "bugbash plan <testplan.yaml>".');
+    const release = await this.lock(id);
+    try {
+      return await fn(await this.load(id));
+    } finally {
+      await release();
+    }
+  }
+
+  private async lock(runId: string): Promise<() => Promise<void>> {
+    await mkdir(join(this.dir, 'runs'), { recursive: true });
+    const path = join(this.dir, 'runs', `${runId}.lock`);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        await writeFile(path, JSON.stringify({ pid: process.pid, at: new Date().toISOString() }), { flag: 'wx' });
+        return () => rm(path, { force: true });
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+        const holder = await readFile(path, 'utf8').then((t) => JSON.parse(t) as { pid: number; at: string }, () => null);
+        if (!holder || processAlive(holder.pid)) {
+          throw new Error(
+            `Run ${runId} is busy: another bugbash process${holder ? ` (pid ${holder.pid}, since ${holder.at})` : ''} is changing it. ` +
+              `Wait for it to finish. If that process is gone, delete ${path}.`,
+          );
+        }
+        await rm(path, { force: true }); // the process that held it has exited
+      }
+    }
+    throw new Error(`Could not lock run ${runId}`);
+  }
+
   async load(runId?: string): Promise<RunState> {
     const id = runId ?? (await this.currentRunId());
     if (!id) throw new Error('No active run. Start one with "bugbash plan <testplan.yaml>".');
@@ -74,6 +114,15 @@ export class Store {
     } catch {
       throw new Error(`Run "${id}" not found in ${this.dir}/runs`);
     }
+  }
+}
+
+function processAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0); // signal 0 only checks that the process exists
+    return true;
+  } catch (err) {
+    return (err as NodeJS.ErrnoException).code === 'EPERM';
   }
 }
 

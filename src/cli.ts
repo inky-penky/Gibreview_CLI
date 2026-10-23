@@ -9,7 +9,7 @@ import { Store, type RunState } from './state.js';
 import { PlanError } from './plan.js';
 import { htmlToText } from './content.js';
 import { applyTriage, collectRun, describeError, gateExitCode, planRun, planTriage, publishRun, refundRun, reportRun, summarize } from './engine.js';
-import type { ReportFormat } from './report.js';
+import { attentionNotes, type ReportFormat } from './report.js';
 
 if (existsSync('.env')) process.loadEnvFile('.env');
 
@@ -29,6 +29,13 @@ program
 
 const store = () => new Store(resolve(program.opts().dir));
 const load = async (): Promise<RunState> => store().load(program.opts().run);
+/** Commands that publish, pay or refund hold the run's lock and work on a copy loaded inside it. */
+const locked =
+  <A extends unknown[]>(fn: (run: RunState, ...args: A) => Promise<unknown>) =>
+  (...args: A): Promise<void> =>
+    store().withRun(program.opts().run, async (run) => {
+      await fn(run, ...args);
+    });
 const client = (run: RunState) => createClient({ environment: run.environment, stateDir: store().dir });
 const envBadge = (env: string) => (env === 'production' ? c.red(c.bold('PRODUCTION')) : env === 'mock' ? c.cyan('mock') : c.yellow('stage'));
 
@@ -131,8 +138,7 @@ program
   .description('fund and publish each batch as a Gibwork bounty')
   .option('--confirm', 'actually create and fund the bounties')
   .option('--batch <id>', 'publish only this batch')
-  .action(async (opts: { confirm?: boolean; batch?: string }) => {
-    const run = await load();
+  .action(locked(async (run, opts: { confirm?: boolean; batch?: string }) => {
     const s = summarize(run);
     const pending = run.batches.filter((b) => !b.taskId && (!opts.batch || b.id === opts.batch));
     if (!pending.length) return console.log('Every batch is already published.');
@@ -147,7 +153,7 @@ program
     if (res.skipped.length) console.log(c.dim(`  already published ${res.skipped.join(', ')}`));
     if (res.stoppedEarly) console.log(c.yellow('Stopped early. Rerun publish later; published batches are skipped.'));
     if (res.failed.length) process.exitCode = 1;
-  });
+  }));
 
 program
   .command('status')
@@ -166,22 +172,20 @@ program
 program
   .command('collect')
   .description('pull submissions from Gibwork and parse tester results')
-  .action(async () => {
-    const run = await load();
+  .action(locked(async (run) => {
     const res = await collectRun(run, client(run), store(), log);
     console.log(`${c.green('✓')} ${res.fetched} submissions fetched, ${res.newSubmissions} new`);
     for (const [id, b] of Object.entries(res.byBatch)) {
       console.log(`  ${id.padEnd(20)} ${c.green(`${b.valid} valid`)}  ${c.yellow(`${b.incomplete} incomplete`)}  ${c.red(`${b.invalid} invalid`)}`);
     }
     console.log(`\nNext ${c.bold('bugbash triage')}`);
-  });
+  }));
 
 program
   .command('triage')
   .description('decide which submissions to pay or reject (dry run unless --apply)')
   .option('--apply', 'execute approvals (pays testers) and rejections on Gibwork')
-  .action(async (opts: { apply?: boolean }) => {
-    const run = await load();
+  .action(locked(async (run, opts: { apply?: boolean }) => {
     const actions = planTriage(run);
     if (!actions.length) return console.log('Nothing to triage. Run collect first, or everything is already reviewed.');
     const icon = { approve: c.green('PAY   '), reject: c.red('REJECT'), hold: c.yellow('HOLD  ') };
@@ -199,7 +203,7 @@ program
     await applyTriage(run, client(run), store(), actions, log);
     show();
     if (actions.some((a) => a.outcome === 'error')) process.exitCode = 1;
-  });
+  }));
 
 program
   .command('report')
@@ -221,6 +225,7 @@ program
       console.log(`  ${col(tc.outcome.padEnd(9))} ${tc.testCase.id.padEnd(8)} ${tc.testCase.title.slice(0, 40).padEnd(40)} ${c.dim(cells)}`);
     }
     console.log(`\nPaid ${agg.totals.paid} ${run.plan.reward.symbol} to ${agg.totals.approved} testers`);
+    attentionNotes(agg).forEach((n) => console.log(c.yellow(`! ${n}`)));
     files.forEach((f) => console.log(`${c.green('✓')} ${f}`));
     if (opts.gate) process.exitCode = gateExitCode(agg);
   });
@@ -229,12 +234,11 @@ program
   .command('refund')
   .description('close the run and refund unspent escrow from every bounty')
   .option('--confirm', 'actually refund')
-  .action(async (opts: { confirm?: boolean }) => {
-    const run = await load();
+  .action(locked(async (run, opts: { confirm?: boolean }) => {
     const live = run.batches.filter((b) => b.taskId && !b.refundedAt);
     if (!opts.confirm) return console.log(`Would refund ${live.length} bounties on ${envBadge(run.environment)}. Re-run with --confirm.`);
     for (const r of await refundRun(run, client(run), store(), log)) console.log(`${r.ok ? c.green('✓') : c.red('✗')} ${r.batchId.padEnd(20)} ${r.detail}`);
-  });
+  }));
 
 program
   .command('doctor')

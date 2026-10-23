@@ -52,6 +52,7 @@
   },
   "files": [
     "dist",
+    "!dist/test",
     "examples",
     "README.md"
   ]

@@ -9,6 +9,7 @@ import { Store } from './state.js';
 import { htmlToText } from './content.js';
 import { fromCents, PlanError } from './plan.js';
 import { applyTriage, collectRun, describeError, planRun, planTriage, publishRun, reportRun, summarize } from './engine.js';
+import { attentionNotes } from './report.js';
 import { checkBudgetCap, confirmCode, guardSpend, paySpend, publishSpend, type GuardConfig } from './spendguard.js';
 
 if (existsSync('.env')) process.loadEnvFile('.env');
@@ -168,10 +169,13 @@ server.registerTool(
   },
   async ({ confirmCode: code, batchId, runId: id }) => {
     try {
-      const run = await store.load(id);
-      if (batchId && !run.batches.some((b) => b.id === batchId)) throw new Error(`No batch ${batchId}. Batches: ${run.batches.map((x) => x.id).join(', ')}`);
-      guardSpend(run, publishSpend(run, batchId), code, guard);
-      return ok(await publishRun(run, createClient({ environment: run.environment, stateDir: store.dir }), store, { batchId }));
+      return ok(
+        await store.withRun(id, async (run) => {
+          if (batchId && !run.batches.some((b) => b.id === batchId)) throw new Error(`No batch ${batchId}. Batches: ${run.batches.map((x) => x.id).join(', ')}`);
+          guardSpend(run, publishSpend(run, batchId), code, guard);
+          return publishRun(run, createClient({ environment: run.environment, stateDir: store.dir }), store, { batchId });
+        }),
+      );
     } catch (e) {
       return fail(e);
     }
@@ -221,8 +225,7 @@ server.registerTool(
   },
   async ({ runId: id }) => {
     try {
-      const run = await store.load(id);
-      return ok(await collectRun(run, createClient({ environment: run.environment, stateDir: store.dir }), store));
+      return ok(await store.withRun(id, (run) => collectRun(run, createClient({ environment: run.environment, stateDir: store.dir }), store)));
     } catch (e) {
       return fail(e);
     }
@@ -239,26 +242,27 @@ server.registerTool(
   },
   async ({ apply, confirmCode: code, runId: id }) => {
     try {
-      const run = await store.load(id);
-      const actions = planTriage(run);
-      const spend = paySpend(actions);
-      if (!apply) {
-        const sym = run.plan.reward.symbol;
-        const total = fromCents(spend.cents);
-        return ok({
-          dryRun: true,
-          actions,
-          ...(spend.targets.length
-            ? {
-                payTotal: `${total} ${sym}`,
-                confirmCode: confirmCode(run, spend),
-                next: `Show the user the payouts (${total} ${sym} in total) and rejections, and ask them to approve. Only after they say yes, call again with apply=true and this confirmCode.`,
-              }
-            : { next: 'Nothing to pay or reject.' }),
-        });
-      }
-      guardSpend(run, spend, code, guard);
-      return ok({ dryRun: false, actions: await applyTriage(run, createClient({ environment: run.environment, stateDir: store.dir }), store, actions) });
+      return await store.withRun(id, async (run) => {
+        const actions = planTriage(run);
+        const spend = paySpend(actions);
+        if (!apply) {
+          const sym = run.plan.reward.symbol;
+          const total = fromCents(spend.cents);
+          return ok({
+            dryRun: true,
+            actions,
+            ...(spend.targets.length
+              ? {
+                  payTotal: `${total} ${sym}`,
+                  confirmCode: confirmCode(run, spend),
+                  next: `Show the user the payouts (${total} ${sym} in total) and rejections, and ask them to approve. Only after they say yes, call again with apply=true and this confirmCode.`,
+                }
+              : { next: 'Nothing to pay or reject.' }),
+          });
+        }
+        guardSpend(run, spend, code, guard);
+        return ok({ dryRun: false, actions: await applyTriage(run, createClient({ environment: run.environment, stateDir: store.dir }), store, actions) });
+      });
     } catch (e) {
       return fail(e);
     }
@@ -279,6 +283,7 @@ server.registerTool(
       return ok({
         gate: agg.gate,
         totals: agg.totals,
+        notes: attentionNotes(agg),
         matrix: agg.cases.map((c) => ({ id: c.testCase.id, title: c.testCase.title, priority: c.testCase.priority, outcome: c.outcome, byDevice: Object.fromEntries(c.cells.map((x) => [x.deviceId, x.outcome])) })),
         files,
       });

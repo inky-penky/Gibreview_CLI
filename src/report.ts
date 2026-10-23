@@ -12,6 +12,16 @@ const csv = (s: string | number | null | undefined) => {
 };
 const md = (s: string) => s.replace(/\|/g, '\\|');
 
+/** Submissions left out of the matrix that a person should know about. Shared by the Markdown report and the CLI. */
+export function attentionNotes(agg: Aggregate): string[] {
+  const notes: string[] = [];
+  const n = agg.totals.awaitingTriage;
+  if (n) notes.push(`${n} incomplete submission${n === 1 ? ' is' : 's are'} waiting for triage and not counted in the results. Run triage to settle ${n === 1 ? 'it' : 'them'}.`);
+  const o = agg.totals.needsAttention;
+  if (o) notes.push(`${o} submission${o === 1 ? ' has' : 's have'} a Gibwork status BugBash does not recognise. Check ${o === 1 ? 'it' : 'them'} on Gibwork (see the tester ledger).`);
+  return notes;
+}
+
 export function renderMarkdown(run: RunState, agg: Aggregate): string {
   const { plan } = run;
   const out: string[] = [];
@@ -31,6 +41,7 @@ export function renderMarkdown(run: RunState, agg: Aggregate): string {
       `${agg.totals.approved} approved, ${agg.totals.rejected} rejected, **${agg.totals.paid} ${plan.reward.symbol}** paid out.`,
   );
   out.push('');
+  for (const note of attentionNotes(agg)) out.push(`> ${note}`, '');
 
   out.push('## Results matrix');
   out.push('');
@@ -71,7 +82,7 @@ export function renderMarkdown(run: RunState, agg: Aggregate): string {
   out.push('| --- | --- | --- | --- | --- | --- | --- |');
   for (const s of Object.values(run.submissions).sort((a, b) => a.batchId.localeCompare(b.batchId) || a.createdAt.localeCompare(b.createdAt))) {
     const payout = s.decision?.action === 'approve' ? `${s.decision.amount} ${plan.reward.symbol}` : '';
-    out.push(`| @${md(s.username)} | ${s.batchId} | ${md(s.parsed.device ?? '')} | ${s.parsed.verdict} | ${s.reviewStatus} | ${payout} | ${md(s.parsed.issues.join('; '))} |`);
+    out.push(`| @${md(s.username)} | ${s.batchId} | ${md(s.parsed.device ?? '')} | ${s.parsed.verdict} | ${s.reviewStatus === 'other' ? `other (${md(s.remoteStatus ?? 'unknown')})` : s.reviewStatus} | ${payout} | ${md(s.parsed.issues.join('; '))} |`);
   }
   out.push('');
 
