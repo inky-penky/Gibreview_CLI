@@ -33,6 +33,12 @@ const { tools } = await client.listTools();
 console.log(`Connected. Tools: ${tools.map((t) => t.name).join(', ')}`);
 
 const planned = await call('bugbash_plan', { planPath: plan, environment: 'mock' });
+if (!planned) {
+  // e.g. the plan is over BUGBASH_MCP_MAX_BUDGET: an agent stops here and reports back.
+  console.log('\nAgent summary: the run cannot go ahead, see the error above.');
+  await client.close();
+  process.exit(1);
+}
 await call('bugbash_publish', {}); // refused: the agent must show the cost and get a human yes first
 await call('bugbash_publish', { confirmCode: 'publish-0.01-USDC-000000' }); // refused: code does not match this amount
 console.log(`\n(agent shows the user ${planned.totalBudget} ${planned.symbol} and the user approves)`);

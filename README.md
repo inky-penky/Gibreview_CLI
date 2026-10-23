@@ -46,7 +46,7 @@ Most Gibwork tooling helps people find bounties or write them one at a time. Bug
 Requires **Node.js 22+** (the Gibwork SDK requires it).
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USER/gibwork-bugbash.git
+git clone https://github.com/inky-penky/Gibwork_Bug_Bash_CLI.git gibwork-bugbash
 cd gibwork-bugbash
 npm install          # also builds dist/ via the prepare script
 npm link             # optional, puts `bugbash` and `bugbash-mcp` on your PATH

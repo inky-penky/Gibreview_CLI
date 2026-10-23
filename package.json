@@ -21,6 +21,14 @@
   ],
   "author": "Ahmad",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/inky-penky/Gibwork_Bug_Bash_CLI.git"
+  },
+  "homepage": "https://github.com/inky-penky/Gibwork_Bug_Bash_CLI#readme",
+  "bugs": {
+    "url": "https://github.com/inky-penky/Gibwork_Bug_Bash_CLI/issues"
+  },
   "dependencies": {
     "@gibwork/sdk": "^0.2.0",
     "@modelcontextprotocol/sdk": "^1.32.1",
