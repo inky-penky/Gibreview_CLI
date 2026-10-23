@@ -5,10 +5,11 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { createClient } from './gibwork.js';
-import { Store, type RunState } from './state.js';
+import { Store } from './state.js';
 import { htmlToText } from './content.js';
-import { PlanError } from './plan.js';
+import { fromCents, PlanError } from './plan.js';
 import { applyTriage, collectRun, describeError, planRun, planTriage, publishRun, reportRun, summarize } from './engine.js';
+import { checkBudgetCap, confirmCode, guardSpend, paySpend, publishSpend, type GuardConfig } from './spendguard.js';
 
 if (existsSync('.env')) process.loadEnvFile('.env');
 
@@ -16,12 +17,17 @@ if (existsSync('.env')) process.loadEnvFile('.env');
  * MCP server so a coding agent can run a human QA pass as part of shipping:
  * "run the checkout regression on real phones and tell me if v2.3.0 is safe to release".
  *
- * Money-moving tools (publish, triage apply) need confirm=true, and on Gibwork production they
- * also need BUGBASH_MCP_ALLOW_PRODUCTION=1 in the server's environment. An agent cannot opt itself in.
+ * Money-moving tools (publish, triage apply) need a confirmCode tied to the exact amount and action,
+ * which the agent gets alongside the cost it must show the user. The operator controls the rest from
+ * the server's environment, which an agent cannot change: BUGBASH_MCP_ALLOW_PRODUCTION=1 to spend on
+ * production, and BUGBASH_MCP_MAX_BUDGET to cap what any run may put into escrow.
  */
 
 const store = new Store(resolve(process.env.BUGBASH_DIR ?? '.bugbash'));
-const allowProd = process.env.BUGBASH_MCP_ALLOW_PRODUCTION === '1';
+const guard: GuardConfig = {
+  allowProduction: process.env.BUGBASH_MCP_ALLOW_PRODUCTION === '1',
+  maxBudget: process.env.BUGBASH_MCP_MAX_BUDGET,
+};
 
 const ok = (data: unknown) => ({ content: [{ type: 'text' as const, text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }] });
 const fail = (err: unknown) => ({
@@ -29,15 +35,12 @@ const fail = (err: unknown) => ({
   content: [{ type: 'text' as const, text: err instanceof PlanError ? `${err.message}\n${err.issues.map((i) => `- ${i}`).join('\n')}` : describeError(err) }],
 });
 
-function guardSpend(run: RunState, confirm: boolean | undefined) {
-  if (!confirm) throw new Error('This moves funds. Show the user the cost and call again with confirm=true once they agree.');
-  if (run.environment === 'production' && !allowProd) {
-    throw new Error('Run targets Gibwork production. The server operator must set BUGBASH_MCP_ALLOW_PRODUCTION=1 to allow agent payouts.');
-  }
-}
-
 const server = new McpServer({ name: 'gibwork-bugbash', version: '0.1.0' });
 const runId = z.string().optional().describe('Run id. Defaults to the most recent run.');
+const confirmCodeArg = z
+  .string()
+  .optional()
+  .describe('Code from the cost preview. Pass it only after the user has seen that amount and approved it.');
 
 server.registerTool(
   'bugbash_generate_plan',
@@ -121,8 +124,15 @@ server.registerTool(
   },
   async ({ planPath, environment }) => {
     try {
-      const { summary, warnings } = await planRun(resolve(planPath), store, environment);
-      return ok({ ...summary, warnings, next: 'Show the budget to the user, then call bugbash_publish with confirm=true.' });
+      const { run, summary, warnings } = await planRun(resolve(planPath), store, environment);
+      const spend = publishSpend(run);
+      checkBudgetCap(run, spend.cents, guard);
+      return ok({
+        ...summary,
+        warnings,
+        confirmCode: confirmCode(run, spend),
+        next: `Show the user the budget (${summary.totalBudget} ${summary.symbol} plus Gibwork fees, on ${environment}) and ask them to approve it. Only after they say yes, call bugbash_publish with this confirmCode.`,
+      });
     } catch (e) {
       return fail(e);
     }
@@ -152,13 +162,15 @@ server.registerTool(
   'bugbash_publish',
   {
     title: 'Publish and fund bounties',
-    description: 'Create and fund a Gibwork bounty per batch via the Gibwork SDK. Already published batches are skipped. Requires confirm=true.',
-    inputSchema: { confirm: z.boolean().optional(), batchId: z.string().optional(), runId },
+    description:
+      'Create and fund a Gibwork bounty per batch via the Gibwork SDK. Already published batches are skipped. Moves funds: requires the confirmCode for this exact amount, which a call without it returns along with the cost to show the user.',
+    inputSchema: { confirmCode: confirmCodeArg, batchId: z.string().optional(), runId },
   },
-  async ({ confirm, batchId, runId: id }) => {
+  async ({ confirmCode: code, batchId, runId: id }) => {
     try {
       const run = await store.load(id);
-      guardSpend(run, confirm);
+      if (batchId && !run.batches.some((b) => b.id === batchId)) throw new Error(`No batch ${batchId}. Batches: ${run.batches.map((x) => x.id).join(', ')}`);
+      guardSpend(run, publishSpend(run, batchId), code, guard);
       return ok(await publishRun(run, createClient({ environment: run.environment, stateDir: store.dir }), store, { batchId }));
     } catch (e) {
       return fail(e);
@@ -222,15 +234,30 @@ server.registerTool(
   {
     title: 'Pay or reject submissions',
     description:
-      'Plan payouts for complete, evidenced work (first come first served up to the tester slots) and rejections with actionable reasons. Dry run unless apply=true and confirm=true.',
-    inputSchema: { apply: z.boolean().default(false), confirm: z.boolean().optional(), runId },
+      'Plan payouts for complete, evidenced work (first come first served up to the tester slots) and rejections with actionable reasons. Payees and amounts come from the plan and cannot be chosen. Dry run unless apply=true with the confirmCode from the dry run.',
+    inputSchema: { apply: z.boolean().default(false), confirmCode: confirmCodeArg, runId },
   },
-  async ({ apply, confirm, runId: id }) => {
+  async ({ apply, confirmCode: code, runId: id }) => {
     try {
       const run = await store.load(id);
       const actions = planTriage(run);
-      if (!apply) return ok({ dryRun: true, actions });
-      guardSpend(run, confirm);
+      const spend = paySpend(actions);
+      if (!apply) {
+        const sym = run.plan.reward.symbol;
+        const total = fromCents(spend.cents);
+        return ok({
+          dryRun: true,
+          actions,
+          ...(spend.targets.length
+            ? {
+                payTotal: `${total} ${sym}`,
+                confirmCode: confirmCode(run, spend),
+                next: `Show the user the payouts (${total} ${sym} in total) and rejections, and ask them to approve. Only after they say yes, call again with apply=true and this confirmCode.`,
+              }
+            : { next: 'Nothing to pay or reject.' }),
+        });
+      }
+      guardSpend(run, spend, code, guard);
       return ok({ dryRun: false, actions: await applyTriage(run, createClient({ environment: run.environment, stateDir: store.dir }), store, actions) });
     } catch (e) {
       return fail(e);

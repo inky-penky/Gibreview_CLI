@@ -32,11 +32,15 @@ const call = async (name, args = {}) => {
 const { tools } = await client.listTools();
 console.log(`Connected. Tools: ${tools.map((t) => t.name).join(', ')}`);
 
-await call('bugbash_plan', { planPath: plan, environment: 'mock' });
-await call('bugbash_publish', {}); // refused: agent must get a human yes first
-await call('bugbash_publish', { confirm: true });
+const planned = await call('bugbash_plan', { planPath: plan, environment: 'mock' });
+await call('bugbash_publish', {}); // refused: the agent must show the cost and get a human yes first
+await call('bugbash_publish', { confirmCode: 'publish-0.01-USDC-000000' }); // refused: code does not match this amount
+console.log(`\n(agent shows the user ${planned.totalBudget} ${planned.symbol} and the user approves)`);
+await call('bugbash_publish', { confirmCode: planned.confirmCode });
 await call('bugbash_collect');
-await call('bugbash_triage', { apply: true, confirm: true });
+const preview = await call('bugbash_triage', {}); // dry run: payouts, rejections and a pay code
+console.log(`\n(agent shows the user ${preview.payTotal} in payouts and the user approves)`);
+await call('bugbash_triage', { apply: true, confirmCode: preview.confirmCode });
 const report = await call('bugbash_report', { outDir: join(work, 'report') });
 
 console.log(`\nAgent summary: release gate is ${report.gate.verdict}. ${report.gate.reasons.join('; ')}`);

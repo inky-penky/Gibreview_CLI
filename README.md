@@ -50,7 +50,7 @@ git clone https://github.com/YOUR_GITHUB_USER/gibwork-bugbash.git
 cd gibwork-bugbash
 npm install          # also builds dist/ via the prepare script
 npm link             # optional, puts `bugbash` and `bugbash-mcp` on your PATH
-npm test             # 22 tests, including a full end-to-end run on the simulator
+npm test             # 29 tests, including a full end-to-end run on the simulator
 ```
 
 Without `npm link`, replace `bugbash` with `node dist/cli.js` in the commands below.
@@ -66,7 +66,8 @@ Copy `.env.example` to `.env`. It is loaded automatically from the current direc
 | `BUGBASH_MOCK` | no | `1` runs against the offline simulator. Same as `--mock` on `plan`. |
 | `ANTHROPIC_API_KEY` | no | Turns on the AI writer for `bugbash generate` |
 | `BUGBASH_DIR` | MCP only | Where run state lives. The default is `./.bugbash`. |
-| `BUGBASH_MCP_ALLOW_PRODUCTION` | MCP only | `1` lets agents spend on production. Agents still need `confirm=true`. |
+| `BUGBASH_MCP_ALLOW_PRODUCTION` | MCP only | `1` lets agents spend on production. Agents still need the confirm code for each spend. |
+| `BUGBASH_MCP_MAX_BUDGET` | MCP only | Most escrow any one run may fund, for example `50`. Agents cannot exceed it. |
 
 ## Try it in 60 seconds (no wallet needed)
 
@@ -290,7 +291,17 @@ The parser accepts HTML, bullets, lowercase text, "passed" or "failed", and `:`,
 
 The tools are `bugbash_generate_plan`, `bugbash_import_csv`, `bugbash_plan`, `bugbash_preview_bounty`, `bugbash_publish`, `bugbash_status`, `bugbash_collect`, `bugbash_triage` and `bugbash_report`.
 
-Spend guards work like this. `bugbash_publish`, and `bugbash_triage` with `apply=true`, refuse unless the agent passes `confirm=true`. The refusal message tells the agent to show the user the cost first. On production they also need `BUGBASH_MCP_ALLOW_PRODUCTION=1`, which only the person running the server can set.
+### Spend guards
+
+The agent never holds the wallet key. It can only move funds through `bugbash_publish` and `bugbash_triage` with `apply=true`, and both are guarded.
+
+1. **Confirm codes tied to the amount.** `bugbash_plan` and the `bugbash_triage` dry run return the cost along with a code such as `publish-24.00-USDC-8b32f2`. The money-moving call only accepts that exact code. The code is a hash of the run, the action, the amount and the exact batches or payout decisions, so it can't be reused. If anything changes (a different batch, new submissions, another run), the old code is refused and the agent has to show the user the new cost. A call with no code returns the cost and tells the agent to get the user's approval first.
+2. **Production is opt-in by the operator.** On Gibwork production, spending also needs `BUGBASH_MCP_ALLOW_PRODUCTION=1` in the server's environment.
+3. **Budget cap set by the operator.** `BUGBASH_MCP_MAX_BUDGET=50` refuses any run whose total escrow would go over 50 (in the plan's reward token), counting batches that are already funded. A value that can't be read blocks all spending instead of being ignored.
+4. **No choice over payees or amounts.** `bugbash_triage` takes no list of payouts. The engine pays valid work only, up to the bounty's tester slots, at the plan's `perTester` amount.
+5. **No refund tool.** Closing a run and returning escrow stays a human CLI action.
+
+Points 2 to 5 are hard limits that no tool argument can change. Point 1 makes sure any approval matches the exact amount. It relies on the agent asking the user before passing the code, which is why the operator limits exist.
 
 To watch an agent session end to end on the simulator, run this.
 
@@ -341,6 +352,7 @@ Paid 24.00 USDC to 12 testers
 src/
   cli.ts        bugbash CLI (commander)
   mcp.ts        MCP server (stdio)
+  spendguard.ts MCP spend guard: amount-bound confirm codes, production opt-in, budget cap
   engine.ts     plan / publish / collect / triage / report / refund, shared by CLI and MCP
   gibwork.ts    SDK client factory and the slice of the SDK BugBash depends on
   mock.ts       offline simulator with the same method shapes as the SDK
