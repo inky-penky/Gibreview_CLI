@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import type { GibworkClient } from '@gibwork/sdk';
 import { createGibworkClient } from '@gibwork/sdk/node';
 import type { Environment } from './state.js';
@@ -12,6 +14,22 @@ export interface GibworkLike {
 export interface ClientConfig {
   environment: Environment;
   stateDir: string;
+}
+
+/**
+ * Loads .env.local, then .env, from dir. Node never overwrites a variable that is already set,
+ * so the shell environment wins, then .env.local (local secrets), then .env.
+ */
+export function loadEnvFiles(dir = process.cwd()): string[] {
+  const loaded: string[] = [];
+  for (const name of ['.env.local', '.env']) {
+    const path = join(dir, name);
+    if (existsSync(path)) {
+      process.loadEnvFile(path);
+      loaded.push(path);
+    }
+  }
+  return loaded;
 }
 
 export function resolveEnvironment(opts: { mock?: boolean; prod?: boolean }): Environment {

@@ -91,3 +91,19 @@ test('the lock hands each holder a fresh copy of the run', async () => {
   });
   await store.withRun(run.runId, async (r) => assert.equal(r.batches[0].refundedAt, 'marked'));
 });
+
+test('.env.local is loaded and wins over .env, but never over the real environment', async () => {
+  const { loadEnvFiles } = await import('../gibwork.js');
+  const dir = await mkdtemp(join(tmpdir(), 'bugbash-env-'));
+  await writeFile(join(dir, '.env'), 'BB_T_SHARED=from-env\nBB_T_ENV_ONLY=env\nBB_T_PRESET=from-env\n');
+  await writeFile(join(dir, '.env.local'), 'BB_T_SHARED=from-local\nBB_T_PRESET=from-local\n');
+  process.env.BB_T_PRESET = 'from-shell';
+  try {
+    assert.equal(loadEnvFiles(dir).length, 2);
+    assert.equal(process.env.BB_T_SHARED, 'from-local');
+    assert.equal(process.env.BB_T_ENV_ONLY, 'env');
+    assert.equal(process.env.BB_T_PRESET, 'from-shell');
+  } finally {
+    for (const k of ['BB_T_SHARED', 'BB_T_ENV_ONLY', 'BB_T_PRESET']) delete process.env[k];
+  }
+});

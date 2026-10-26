@@ -1,10 +1,9 @@
 #!/usr/bin/env node
-import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { createClient } from './gibwork.js';
+import { createClient, loadEnvFiles } from './gibwork.js';
 import { Store } from './state.js';
 import { htmlToText } from './content.js';
 import { fromCents, PlanError } from './plan.js';
@@ -12,7 +11,7 @@ import { applyTriage, collectRun, describeError, planRun, planTriage, publishRun
 import { attentionNotes } from './report.js';
 import { checkBudgetCap, confirmCode, guardSpend, paySpend, publishSpend, type GuardConfig } from './spendguard.js';
 
-if (existsSync('.env')) process.loadEnvFile('.env');
+loadEnvFiles();
 
 /**
  * MCP server so a coding agent can run a human QA pass as part of shipping:

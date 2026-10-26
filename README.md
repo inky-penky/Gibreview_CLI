@@ -57,7 +57,7 @@ Without `npm link`, replace `bugbash` with `node dist/cli.js` in the commands be
 
 ## Environment variables
 
-Copy `.env.example` to `.env`. It is loaded automatically from the current directory.
+Copy `.env.example` to `.env` (or `.env.local`). Both are loaded automatically from the current directory and are gitignored. Values in `.env.local` win over `.env`, and variables already set in your shell win over both.
 
 | Variable | Required | Meaning |
 | --- | --- | --- |

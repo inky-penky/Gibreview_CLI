@@ -4,14 +4,14 @@ import { copyFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { Command, Option } from 'commander';
-import { createClient, resolveEnvironment } from './gibwork.js';
+import { createClient, loadEnvFiles, resolveEnvironment } from './gibwork.js';
 import { Store, type RunState } from './state.js';
 import { PlanError } from './plan.js';
 import { htmlToText } from './content.js';
 import { applyTriage, collectRun, describeError, gateExitCode, planRun, planTriage, publishRun, refundRun, reportRun, summarize } from './engine.js';
 import { attentionNotes, type ReportFormat } from './report.js';
 
-if (existsSync('.env')) process.loadEnvFile('.env');
+loadEnvFiles();
 
 const tty = process.stdout.isTTY && !process.env.NO_COLOR;
 const paint = (code: number) => (s: string) => (tty ? `\x1b[${code}m${s}\x1b[0m` : s);
