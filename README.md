@@ -359,8 +359,9 @@ src/
   gibwork.ts    SDK client factory and the slice of the SDK BugBash depends on
   mock.ts       offline simulator with the same method shapes as the SDK
   plan.ts       test plan schema (zod), batching, decimal-safe money
-  content.ts    bounty HTML and the tester result template
-  parser.ts     tolerant result parser and payout validation
+  template.ts   generic submission templates: render, tolerant parse, missing fields
+  content.ts    bounty HTML for the QA preset
+  parser.ts     QA preset on top of template.ts: result template and payout rules
   aggregate.ts  case × device consensus and release gate
   report.ts     Markdown, CSV, JUnit XML and JSON writers
   generate/     URL → page model → draft test plan (rule-based and AI writers)
