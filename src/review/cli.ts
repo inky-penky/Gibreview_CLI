@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { existsSync } from 'node:fs';
-import { copyFile, readFile } from 'node:fs/promises';
+import { copyFile, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { Command, Option } from 'commander';
@@ -9,7 +9,7 @@ import { createClient, loadEnvFiles, resolveEnvironment } from '../gibwork.js';
 import { PlanError, toCents } from '../plan.js';
 import { Store } from '../state.js';
 import { htmlToText } from '../template.js';
-import { loadBrief, winnerSlots } from './brief.js';
+import { briefText, loadBrief, SITE_CATEGORY, totalPayoutCents, winnerSlots } from './brief.js';
 import type { CheckContext } from './checks.js';
 import { attachTask, collectReview, publishBrief, publishPreview, rankReview, type ReviewState } from './engine.js';
 import { applyDecisions, closePreview, closeReview, decisionCode, planDecisions, type ReviewAction } from './decide.js';
@@ -84,7 +84,43 @@ program
     const state = await attachTask(taskId, brief, resolve(opts.brief), env, client(env), store());
     console.log(`${c.green('✓')} Attached ${c.bold(state.task.title)}  ${envBadge(env)}`);
     console.log(`  pool ${state.task.pool} ${state.task.symbol}${state.task.deadline ? ` · deadline ${state.task.deadline}` : ''} · run ${state.runId}`);
+    if (state.task.rules === 'missing') {
+      console.log(c.yellow(`\n! The bounty text does not list the rules, so participants cannot pre-check against them.`));
+      console.log(c.yellow(`  Edit the bounty and paste the output of "gibreview text ${opts.brief}", or share the brief with participants.`));
+    } else if (state.task.rules === 'differ') {
+      console.log(c.yellow(`\n! The rules in the bounty text differ from ${opts.brief}. Submissions are reviewed against the brief,`));
+      console.log(c.yellow(`  but participants pre-check against the bounty. Make them the same with "gibreview text ${opts.brief}".`));
+    }
     console.log(`\nNext ${c.bold('gibreview collect')}`);
+  });
+
+program
+  .command('text')
+  .description('print a brief as bounty text to paste into "Create Bounty" on the Gibwork website')
+  .argument('<brief>', 'brief file (.yaml or .json)')
+  .option('--out <file>', 'write the description to a file instead of printing it')
+  .action(async (briefPath: string, opts: { out?: string }) => {
+    const brief = await loadBrief(briefPath);
+    const text = briefText(brief);
+    const sym = brief.bounty?.symbol ?? 'USDC';
+    const total = (totalPayoutCents(brief) / 100).toFixed(2);
+    console.log(c.bold('Fill in "Create Bounty" on gibwork.com:\n'));
+    console.log(`  Title        ${brief.name}`);
+    console.log(`  category     ${SITE_CATEGORY[brief.preset]}${brief.preset === 'dev' ? '' : c.dim(' (or Social Media, Design or Feedback if closer)')}`);
+    console.log(`  options      ${brief.bounty?.deadlineHours ? `due ${new Date(Date.now() + brief.bounty.deadlineHours * 3_600_000).toDateString()}` : 'pick a due date'}`);
+    console.log(`  payment      Custom: ${brief.bounty?.pool ?? total} ${sym}${brief.bounty ? '' : c.dim(` (what the payout pays in total; add bounty.pool to the brief to set it)`)}`);
+    console.log(`  description  ${opts.out ? opts.out : 'everything between the lines below'}\n`);
+    if (opts.out) {
+      if (existsSync(opts.out)) throw new Error(`${opts.out} already exists`);
+      await writeFile(opts.out, text + '\n');
+      console.log(`${c.green('✓')} Wrote ${opts.out}`);
+    } else {
+      console.log(c.dim('─'.repeat(60)));
+      console.log(text);
+      console.log(c.dim('─'.repeat(60)));
+    }
+    console.log(c.dim(`\nPutting the SUBMISSION block in a code block keeps its lines together and easy to copy.`));
+    console.log(c.dim(`After publishing: gibreview attach <taskId> --brief ${briefPath}`));
   });
 
 program

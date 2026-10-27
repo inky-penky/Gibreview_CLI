@@ -165,6 +165,7 @@ M1, M2 and M4 can be built and demoed fully on the mock, without funds.
 5. **Visibility.** Can participants see each other's submissions? This changes how much duplicate detection matters.
 6. **Network.** Stage bounties use the mainnet USDC mint. Does stage move real USDC?
 7. **Amount units in task details.** Discovery reports `asset.amount` as a base-unit string; `tasks.get` types it as a number. `attach` assumes base units for the pool it displays.
+8. **The website's "payment" tab.** "Create Bounty" offers a *minimum payment* (Anyone $10+, Beginner $25+, Skilled $75+, Pro $200+, Expert $500+, or Custom). Is that the pool, or `minSubmissionAmount` (the least one winner is paid)? If it is a minimum per winner, a `multiple-winners` split like 15 / 10 / 5 cannot be paid on a bounty set to $10+. A $10 minimum would also explain why stage rejected pools of 1.00 and 1.01 (question 1).
 
 ## 10. Risks
 

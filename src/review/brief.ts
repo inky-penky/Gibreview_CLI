@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
 import { fromCents, PlanError, toCents, USDC_MINT } from '../plan.js';
-import { renderTemplate, type Template } from '../template.js';
+import { htmlToText, renderTemplate, type Template } from '../template.js';
 
 /**
  * A review brief: what a bounty asks for, the template submissions must follow, the checks that
@@ -254,8 +254,11 @@ export function rulesFromContent(text: string): BriefField[] | null {
   return fields.length ? fields : null;
 }
 
-/** Bounty text for Gibwork: the task, what to submit, the rules a submission is checked against, and the payout. */
-export function briefContent(b: Brief, runId: string): string {
+/**
+ * Bounty text for Gibwork: the task, what to submit, the rules a submission is checked against, and the payout.
+ * runId is set when gibreview publishes; text for pasting into the website editor has none.
+ */
+export function briefContent(b: Brief, runId?: string): string {
   const sym = b.bounty?.symbol ?? 'USDC';
   const parts: string[] = [];
   parts.push(...b.description.trim().split(/\n{2,}/).map((p) => `<p>${esc(p.trim())}</p>`));
@@ -275,9 +278,34 @@ export function briefContent(b: Brief, runId: string): string {
     b.payout.rule === 'multiple-winners'
       ? `The top ${amounts.length} are paid ${amounts.map((a, i) => `${ordinal(i + 1)} ${a}`).join(', ')}.`
       : b.payout.rule === 'pool'
-        ? `Every accepted submission is paid ${amounts[0]}, up to ${winnerSlots(b)} submissions.`
+        ? `Every accepted submission is paid ${amounts[0]}, ${winnerSlots(b) ? `up to ${winnerSlots(b)} submissions` : 'until the pool runs out'}.`
         : `The best submission is paid ${amounts[0]}.`;
   parts.push(`<p><strong>Payout:</strong> ${esc(how)}</p>`);
-  parts.push(`<p><small>Ref ${esc(runId)}. Reviewed with gibwork-review.</small></p>`);
+  if (runId) parts.push(`<p><small>Ref ${esc(runId)}. Reviewed with gibwork-review.</small></p>`);
   return parts.join('\n');
+}
+
+/** The bounty description as plain text, to paste into the editor on the Gibwork website. */
+export function briefText(b: Brief): string {
+  return htmlToText(briefContent(b));
+}
+
+/** The website's bounty categories, and the one each preset fits. */
+export const SITE_CATEGORY: Record<Preset, string> = { dev: 'Development', content: 'Misc', custom: 'Misc' };
+
+/**
+ * Whether a bounty's text lists the same rules as the brief. Participants' pre-checks read the bounty,
+ * so a bounty without them (or with different ones) is checked against something else than the review.
+ */
+export function compareRules(template: BriefField[], bountyContent: string): 'match' | 'differ' | 'missing' {
+  const text = /<[a-z][\s\S]*>/i.test(bountyContent) ? htmlToText(bountyContent) : bountyContent;
+  let published: BriefField[] | null;
+  try {
+    published = rulesFromContent(text);
+  } catch {
+    return 'differ';
+  }
+  if (!published) return 'missing';
+  const key = (fs: BriefField[]) => JSON.stringify(fs.map((f) => [f.id, f.type, f.required, f.checks]));
+  return key(published) === key(template) ? 'match' : 'differ';
 }

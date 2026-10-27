@@ -50,7 +50,7 @@ git clone https://github.com/inky-penky/Gibwork_Bug_Bash_CLI.git gibwork-bugbash
 cd gibwork-bugbash
 npm install          # also builds dist/ via the prepare script
 npm link             # optional, puts `bugbash` and `bugbash-mcp` on your PATH
-npm test             # 67 tests, including a full end-to-end run on the simulator
+npm test             # 69 tests, including a full end-to-end run on the simulator
 ```
 
 Without `npm link`, replace `bugbash` with `node dist/cli.js` in the commands below.
@@ -315,6 +315,7 @@ node examples/mcp-agent-demo.mjs
 
 ```bash
 gibreview init brief.yaml --preset content     # or --preset dev
+gibreview text brief.yaml                      # bounty text to paste into "Create Bounty" on the website
 gibreview attach <taskId> --brief brief.yaml   # review an existing bounty, or:
 gibreview publish brief.yaml --confirm         # create and fund a new one
 gibreview collect                              # fetch submissions and run the checks
@@ -341,7 +342,7 @@ gibreview check <taskId> my-submission.txt     # or "-" to read the draft from s
 ✗ Fix these 2 problems before you submit: CI failing on acme/payments-sdk#45: test; notes has 2 words, needs at least 15.
 ```
 
-It exits 0 when the draft is ready. For a bounty written by hand on the Gibwork site, pass the creator's brief with `--brief`. A participant's own agent can do the same through the read-only MCP tool `review_precheck`. A pre-check can't see other people's submissions, so copies are only caught at review time.
+It exits 0 when the draft is ready. Creators who write the bounty on the Gibwork website paste the output of `gibreview text`, which carries the same rules, and `attach` warns when a bounty's text lists no rules or different ones. For a bounty written entirely by hand, a participant can pass the creator's brief with `--brief`. A participant's own agent can do the same through the read-only MCP tool `review_precheck`. A pre-check can't see other people's submissions, so copies are only caught at review time.
 
 **Payouts.** Every brief must say how the bounty pays; nothing is assumed:
 

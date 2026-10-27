@@ -4,7 +4,12 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PlanError } from '../plan.js';
 import { htmlToText } from '../template.js';
-import { briefContent, loadBrief, ruleLine, rulesFromContent, validateBrief } from '../review/brief.js';
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { Store } from '../state.js';
+import { createClient } from '../gibwork.js';
+import { attachTask, type ReviewState } from '../review/engine.js';
+import { briefContent, briefText, compareRules, loadBrief, ruleLine, rulesFromContent, validateBrief } from '../review/brief.js';
 import { precheck } from '../review/precheck.js';
 import { mockFetch } from '../review/mockweb.js';
 
@@ -77,6 +82,42 @@ test('pre-check: placeholders and missing blocks are not mistaken for answers', 
   // Pasting the bounty's rule list along with the block does not change the answers.
   const pasted = `${htmlToText(bounty.content)}\n${draft('https://github.com/acme/payments-sdk/pull/41')}`;
   assert.ok((await precheck(bounty, pasted, ctx)).ready);
+});
+
+/** Roughly what a rich-text editor stores for pasted text: a paragraph per line, list items wrapping paragraphs, a code block. */
+function asEditorHtml(text: string): string {
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const block = text.match(/SUBMISSION[\s\S]*?\nEND/)![0];
+  const [before, after] = text.split(block);
+  const paras = (s: string) =>
+    s.split('\n').filter((l) => l.trim()).map((l) => (/^\s*- /.test(l) ? `<ul><li><p>${esc(l.replace(/^\s*- /, ''))}</p></li></ul>` : `<p>${esc(l)}</p>`)).join('');
+  return `${paras(before)}<pre><code>${esc(block)}</code></pre>${paras(after)}`;
+}
+
+test('a bounty written on the website from "gibreview text" pre-checks without the brief', async () => {
+  const b = await loadBrief(join(examples, 'dev-brief.yaml'));
+  const html = asEditorHtml(briefText(b));
+  assert.equal(compareRules(b.template, html), 'match');
+  const res = await precheck({ content: html, deadline: null }, draft('https://github.com/acme/payments-sdk/pull/41'), ctx);
+  assert.equal(res.rules, 'bounty');
+  assert.ok(res.ready);
+
+  assert.equal(compareRules(b.template, '<p>Fix the retry bug and send me the PR link.</p>'), 'missing');
+  const content = await loadBrief(join(examples, 'content-brief.yaml'));
+  assert.equal(compareRules(b.template, briefContent(content)), 'differ');
+});
+
+test('attach records whether the bounty lists the brief rules', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'gibattach-'));
+  const store = new Store<ReviewState>(join(dir, '.gibreview'));
+  const client = createClient({ environment: 'mock', stateDir: store.dir });
+  const b = await loadBrief(join(examples, 'dev-brief.yaml'));
+  const create = (content: string) =>
+    client.tasks.create({ title: 'Retry bug', content, tags: ['Development'], payment: { mintAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', amount: '50' }, minSubmissionAmount: '50' });
+  const pasted = await create(asEditorHtml(briefText(b)));
+  assert.equal((await attachTask(pasted.taskId, b, 'dev-brief.yaml', 'mock', client, store)).task.rules, 'match');
+  const handWritten = await create('<p>Fix the retry bug and send me the PR link.</p>');
+  assert.equal((await attachTask(handWritten.taskId, b, 'dev-brief.yaml', 'mock', client, store)).task.rules, 'missing');
 });
 
 test('pre-check: a hand-written bounty needs the creator brief', async () => {

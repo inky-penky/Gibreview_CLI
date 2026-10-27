@@ -5,7 +5,7 @@ import type { GibworkLike } from '../gibwork.js';
 import { fromCents, PlanError, toCents } from '../plan.js';
 import type { Environment, ReviewStatus, Store } from '../state.js';
 import { missingFields, parseTemplate } from '../template.js';
-import { briefContent, briefTemplate, totalPayoutCents, winnerSlots, type Brief } from './brief.js';
+import { briefContent, briefTemplate, compareRules, totalPayoutCents, winnerSlots, type Brief } from './brief.js';
 import { checkFields, deadlineCheck, findDuplicates, type CheckContext, type CheckResult, type FieldValue } from './checks.js';
 
 export type ReviewVerdict = 'eligible' | 'needs-changes' | 'disqualified' | 'invalid';
@@ -52,6 +52,8 @@ export interface ReviewTask {
   /** Escrow pool as a decimal string in the token's units. */
   pool: string;
   publishedBy: 'copilot' | 'attached';
+  /** attach: whether the bounty text lists the brief's rules, which participants' pre-checks rely on. */
+  rules?: 'match' | 'differ' | 'missing';
   txHash?: string;
   /** Set when the SDK could not tell whether the create transaction landed. Never auto-retried. */
   ambiguous?: { intentId: string; message: string };
@@ -151,6 +153,7 @@ export async function attachTask(taskId: string, brief: Brief, briefPath: string
   const t = (await client.tasks.get(taskId)) as unknown as {
     id: string;
     title: string;
+    content?: string;
     deadline?: string | null;
     asset?: { mintAddress: string; symbol: string; amount: number | string; decimals: number };
   };
@@ -165,7 +168,7 @@ export async function attachTask(taskId: string, brief: Brief, briefPath: string
     createdAt: new Date().toISOString(),
     briefPath,
     brief,
-    task: { id: t.id, title: t.title, deadline: t.deadline ?? null, mintAddress: t.asset?.mintAddress ?? '', symbol: t.asset?.symbol ?? '?', pool, publishedBy: 'attached' },
+    task: { id: t.id, title: t.title, deadline: t.deadline ?? null, mintAddress: t.asset?.mintAddress ?? '', symbol: t.asset?.symbol ?? '?', pool, publishedBy: 'attached', rules: compareRules(brief.template, t.content ?? '') },
     submissions: {},
   };
   await store.save(state);
