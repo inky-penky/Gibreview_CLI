@@ -61,7 +61,7 @@ test('the bounty text carries a template that parses back', () => {
   const b = validateBrief({ ...base, preset: 'dev', payout: { rule: 'one-winner', amounts: ['20'] } });
   const text = htmlToText(briefContent(b, 'run-1'));
   assert.ok(text.includes(renderTemplate(briefTemplate(b))));
-  assert.match(text, /must be a pull request with passing CI/);
+  assert.ok(text.includes('pr (required): a link; a GitHub pull request with passing CI'));
   const filled = text.replace('pr: <link to your github pull request>', 'pr: https://github.com/a/b/pull/1').replace(/notes: <[^>]+>/, 'notes: did it');
   const p = parseTemplate(filled, briefTemplate(b));
   assert.deepEqual(p.fields.get('pr')!.urls, ['https://github.com/a/b/pull/1']);

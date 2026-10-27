@@ -150,7 +150,7 @@ Each milestone keeps every existing test green.
 | M1 ✅ | Generic `template.ts`; QA parser rebuilt on it with identical results | no |
 | M2 ✅ | Brief format, `attach`, `collect`, checks for `dev` and `content`, `rank`, shortlist report | no (except `publish --confirm`) |
 | M3 ✅ | `decide` with payout rules, request-changes comments, confirm code on approvals, `close` (CLI; the `review_*` MCP tools are not built yet) | yes |
-| M4 | Participant pre-check (`check` command and `review_precheck` tool) | no |
+| M4 ✅ | Participant pre-check (`check` command and `review_precheck` tool); bounties publish their rules in a fixed wording the pre-check reads back | no |
 | M5 | Stage verification pass (section 9), mock updated to match | yes, small |
 | M6 (stretch) | AI rubric scorer | no |
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { existsSync } from 'node:fs';
-import { copyFile } from 'node:fs/promises';
+import { copyFile, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { Command, Option } from 'commander';
@@ -14,6 +14,7 @@ import type { CheckContext } from './checks.js';
 import { attachTask, collectReview, publishBrief, publishPreview, rankReview, type ReviewState } from './engine.js';
 import { applyDecisions, closePreview, closeReview, decisionCode, planDecisions, type ReviewAction } from './decide.js';
 import { mockFetch } from './mockweb.js';
+import { precheck } from './precheck.js';
 import { writeShortlist } from './report.js';
 
 loadEnvFiles();
@@ -200,6 +201,34 @@ program
       console.log(`${c.green('✓')} Closed${closed.refunded ? `, ${closed.refunded} ${sym} refunded` : ''}  ${c.dim(`tx ${closed.txHash}`)}`);
     });
   });
+
+program
+  .command('check')
+  .description('participants: check a draft against a bounty\'s rules before submitting (free, sends nothing)')
+  .argument('<taskId>', 'Gibwork task id of the bounty')
+  .argument('<file>', 'your draft submission, or - to read it from stdin')
+  .option('--brief <file>', "the creator's brief, for bounties that do not list gibreview rules")
+  .addOption(new Option('--mock', 'use the offline simulator'))
+  .addOption(new Option('--prod', 'target Gibwork production (default is stage)'))
+  .action(async (taskId: string, file: string, opts: { brief?: string; mock?: boolean; prod?: boolean }) => {
+    const draft = file === '-' ? await readStdin() : await readFile(file, 'utf8').catch(() => Promise.reject(new Error(`Cannot read ${file}`)));
+    const env = resolveEnvironment(opts);
+    const task = (await client(env).tasks.get(taskId)) as unknown as { title: string; content: string; deadline?: string | null };
+    const template = opts.brief ? (await loadBrief(opts.brief)).template : undefined;
+    const res = await precheck({ content: task.content, deadline: task.deadline ?? null }, draft, checkContext(env), { template });
+    console.log(`${c.bold(task.title)}  ${envBadge(env)}  ${c.dim(`rules from the ${res.rules}: ${res.fields.join(', ')}`)}\n`);
+    const icon = { pass: c.green('✓'), warn: c.yellow('?'), fail: c.red('✗') };
+    for (const ch of res.checks) console.log(`  ${icon[ch.status]} ${ch.id.padEnd(10)} ${ch.message}${ch.status === 'fail' && !ch.fixable ? c.red('  (cannot be fixed)') : ''}`);
+    console.log(`\n${res.ready ? c.green('✓') : c.red('✗')} ${res.summary}`);
+    res.limits.forEach((l) => console.log(c.dim(`  ${l}`)));
+    if (!res.ready) process.exitCode = 1;
+  });
+
+async function readStdin(): Promise<string> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+  return Buffer.concat(chunks).toString('utf8');
+}
 
 program
   .command('status')

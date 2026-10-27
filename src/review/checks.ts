@@ -127,7 +127,7 @@ async function runCheck(spec: CheckSpec, field: BriefField, value: FieldValue, c
 }
 
 /** Runs every configured check on one submission's parsed fields. Missing fields are reported by the template layer. */
-export async function checkFields(brief: Brief, fields: Record<string, FieldValue>, ctx: CheckContext): Promise<CheckResult[]> {
+export async function checkFields(brief: Pick<Brief, 'template'>, fields: Record<string, FieldValue>, ctx: CheckContext): Promise<CheckResult[]> {
   const out: CheckResult[] = [];
   for (const f of brief.template) {
     const v = fields[f.id];

@@ -50,7 +50,7 @@ git clone https://github.com/inky-penky/Gibwork_Bug_Bash_CLI.git gibwork-bugbash
 cd gibwork-bugbash
 npm install          # also builds dist/ via the prepare script
 npm link             # optional, puts `bugbash` and `bugbash-mcp` on your PATH
-npm test             # 62 tests, including a full end-to-end run on the simulator
+npm test             # 67 tests, including a full end-to-end run on the simulator
 ```
 
 Without `npm link`, replace `bugbash` with `node dist/cli.js` in the commands below.
@@ -289,7 +289,7 @@ The parser accepts HTML, bullets, lowercase text, "passed" or "failed", and `:`,
 }
 ```
 
-The tools are `bugbash_generate_plan`, `bugbash_import_csv`, `bugbash_plan`, `bugbash_preview_bounty`, `bugbash_publish`, `bugbash_status`, `bugbash_collect`, `bugbash_triage` and `bugbash_report`.
+The tools are `bugbash_generate_plan`, `bugbash_import_csv`, `bugbash_plan`, `bugbash_preview_bounty`, `bugbash_publish`, `bugbash_status`, `bugbash_collect`, `bugbash_triage` and `bugbash_report`, plus `review_precheck` (read-only, see Review Copilot below).
 
 ### Spend guards
 
@@ -326,6 +326,22 @@ gibreview close --confirm                      # refunds the part of the pool no
 ```
 
 Only `publish --confirm`, `decide --apply` and `close --confirm` move money or post anything.
+
+**For participants: check before you submit.** A bounty published with gibreview lists its rules, one line per field (`pr (required): a link; a GitHub pull request on acme/payments-sdk with passing CI`). Participants run the same checks on a draft, for free, before sending it:
+
+```bash
+gibreview check <taskId> my-submission.txt     # or "-" to read the draft from stdin
+```
+
+```
+  ✓ github     acme/payments-sdk#45 is open
+  ✗ ci         CI failing on acme/payments-sdk#45: test
+  ✗ words      notes has 2 words, needs at least 15
+
+✗ Fix these 2 problems before you submit: CI failing on acme/payments-sdk#45: test; notes has 2 words, needs at least 15.
+```
+
+It exits 0 when the draft is ready. For a bounty written by hand on the Gibwork site, pass the creator's brief with `--brief`. A participant's own agent can do the same through the read-only MCP tool `review_precheck`. A pre-check can't see other people's submissions, so copies are only caught at review time.
 
 **Payouts.** Every brief must say how the bounty pays; nothing is assumed:
 

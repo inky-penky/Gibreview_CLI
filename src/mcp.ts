@@ -292,4 +292,32 @@ server.registerTool(
   },
 );
 
+server.registerTool(
+  'review_precheck',
+  {
+    title: 'Check a bounty submission before sending it',
+    description:
+      "For participants: run a bounty's automated checks on a draft submission before submitting it. Read-only and free: nothing is submitted and no funds move. " +
+      'Rules come from the bounty text when it was published with gibreview. Show the user every failed check and the summary, and suggest fixes for fixable ones.',
+    inputSchema: {
+      taskId: z.string().describe('Gibwork task id of the bounty'),
+      submission: z.string().min(1).describe('The draft submission text, including the SUBMISSION block'),
+      environment: z.enum(['stage', 'production', 'mock']).default('stage'),
+    },
+    annotations: { readOnlyHint: true },
+  },
+  async ({ taskId, submission, environment }) => {
+    try {
+      const { precheck } = await import('./review/precheck.js');
+      const { mockFetch } = await import('./review/mockweb.js');
+      const client = createClient({ environment, stateDir: resolve(process.env.GIBREVIEW_DIR ?? '.gibreview') });
+      const task = (await client.tasks.get(taskId)) as unknown as { title: string; content: string; deadline?: string | null };
+      const ctx = environment === 'mock' ? { fetch: mockFetch } : { fetch: globalThis.fetch as unknown as typeof mockFetch, githubToken: process.env.GITHUB_TOKEN };
+      return ok({ bounty: task.title, ...(await precheck({ content: task.content, deadline: task.deadline ?? null }, submission, ctx)) });
+    } catch (e) {
+      return fail(e);
+    }
+  },
+);
+
 await server.connect(new StdioServerTransport());

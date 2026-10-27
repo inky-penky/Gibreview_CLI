@@ -177,7 +177,7 @@ export async function loadBrief(path: string): Promise<Brief> {
   }
 }
 
-export function briefTemplate(b: Brief): Template {
+export function briefTemplate(b: Pick<Brief, 'template'>): Template {
   return {
     header: SUBMISSION_HEADER,
     footer: SUBMISSION_FOOTER,
@@ -193,11 +193,65 @@ export function ordinal(n: number): string {
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-function describeCheck(c: CheckSpec, field: BriefField): string {
-  if (c === 'reachable') return `the ${field.id} link must open`;
-  if ('domain' in c) return `the ${field.id} link must be on ${c.domain.join(', ')}`;
-  if ('words' in c) return `${field.id} must be ${[c.words.min ? `at least ${c.words.min}` : '', c.words.max ? `at most ${c.words.max}` : ''].filter(Boolean).join(' and ')} words`;
-  return `${field.id} must be a pull request${c.github.repo ? ` on ${c.github.repo}` : ''}${c.github.requireCi ? ' with passing CI' : ''}`;
+// ---------- published rules ----------
+//
+// The bounty lists every field's rules on one line in a fixed wording, e.g.
+//   pr (required): a link; a GitHub pull request on acme/payments-sdk with passing CI
+// People read it as plain English, and the participant pre-check parses it back, because a
+// participant never sees the creator's brief. ruleLine and parseRuleLine must stay inverses.
+
+function describeCheck(c: CheckSpec): string {
+  if (c === 'reachable') return 'must open';
+  if ('domain' in c) return `must be on ${c.domain.join(', ')}`;
+  if ('words' in c) {
+    const { min, max } = c.words;
+    if (max === undefined) return `at least ${min ?? 0} words`;
+    return min ? `${min} to ${max} words` : `at most ${max} words`;
+  }
+  return `a GitHub pull request${c.github.repo ? ` on ${c.github.repo}` : ''}${c.github.requireCi ? ' with passing CI' : ''}`;
+}
+
+export function ruleLine(f: BriefField): string {
+  return `${f.id} (${f.required ? 'required' : 'optional'}): ${[f.type === 'url' ? 'a link' : 'text', ...f.checks.map(describeCheck)].join('; ')}`;
+}
+
+// "id (required):" rather than "id:", so a participant who pastes the rules into a submission
+// never has a rule read as their answer.
+const RULE_LINE = /^\s*(?:[-•*]\s*)?([a-z][a-z0-9_-]*) \((required|optional)\): (a link|text)((?:; [^;\n]+)*)\s*$/;
+
+function parseCheck(clause: string): CheckSpec | null {
+  let m: RegExpMatchArray | null;
+  if (clause === 'must open') return 'reachable';
+  if ((m = clause.match(/^must be on (.+)$/))) return { domain: m[1].split(',').map((d) => d.trim()).filter(Boolean) };
+  if ((m = clause.match(/^(\d+) to (\d+) words$/))) return { words: { min: Number(m[1]), max: Number(m[2]) } };
+  if ((m = clause.match(/^at least (\d+) words$/))) return { words: { min: Number(m[1]) } };
+  if ((m = clause.match(/^at most (\d+) words$/))) return { words: { max: Number(m[1]) } };
+  if ((m = clause.match(/^a GitHub pull request(?: on ([\w.-]+\/[\w.-]+))?( with passing CI)?$/))) {
+    return { github: { ...(m[1] ? { repo: m[1] } : {}), requireCi: Boolean(m[2]) } };
+  }
+  return null;
+}
+
+/**
+ * Reads the fields and checks back from a bounty's text (plain text or HTML already converted).
+ * Labels come from the placeholders in the SUBMISSION block. Returns null when the bounty lists no rules,
+ * for example one written by hand on the Gibwork site. Throws on a rule it cannot read, rather than skip it.
+ */
+export function rulesFromContent(text: string): BriefField[] | null {
+  const labels = new Map([...text.matchAll(/^([a-z][a-z0-9_-]*): <([^>\n]+)>\s*$/gm)].map((m) => [m[1], m[2]]));
+  const fields: BriefField[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.match(RULE_LINE);
+    if (!m) continue;
+    const clauses = m[4].split(';').map((c) => c.trim()).filter(Boolean);
+    const checks = clauses.map((c) => {
+      const spec = parseCheck(c);
+      if (!spec) throw new PlanError(`Cannot read the rule "${c}" for ${m[1]} in this bounty. Update gibreview, or ask the creator for the brief.`);
+      return spec;
+    });
+    fields.push({ id: m[1], label: labels.get(m[1]) ?? m[1], type: m[3] === 'a link' ? 'url' : 'text', required: m[2] === 'required', checks });
+  }
+  return fields.length ? fields : null;
 }
 
 /** Bounty text for Gibwork: the task, what to submit, the rules a submission is checked against, and the payout. */
@@ -212,8 +266,10 @@ export function briefContent(b: Brief, runId: string): string {
   parts.push('<h3>How to submit</h3>');
   parts.push('<p>Paste this block into your submission and replace every &lt;placeholder&gt;.</p>');
   parts.push(`<pre>${esc(renderTemplate(briefTemplate(b)))}</pre>`);
-  const rules = b.template.flatMap((f) => [...(f.required ? [`${f.id} is required`] : []), ...f.checks.map((c) => describeCheck(c, f))]);
-  parts.push(`<p>Every submission is checked automatically: ${esc(rules.join('; '))}. Copies of another submission and work sent after the deadline are not accepted.</p>`);
+  parts.push('<p>Every submission is checked automatically against these rules:</p>');
+  parts.push(`<ul>${b.template.map((f) => `<li>${esc(ruleLine(f))}</li>`).join('')}</ul>`);
+  parts.push('<p>Copies of another submission and work sent after the deadline are not accepted.</p>');
+  parts.push('<p>Check your submission for free before you send it: <code>npx gibreview check &lt;this bounty id&gt; my-submission.txt</code></p>');
   const amounts = b.payout.amounts.map((a) => `${a} ${sym}`);
   const how =
     b.payout.rule === 'multiple-winners'
