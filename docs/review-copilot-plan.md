@@ -134,7 +134,7 @@ Each milestone keeps every existing test green.
 | # | Deliverable | Moves money |
 | --- | --- | --- |
 | M1 ✅ | Generic `template.ts`; QA parser rebuilt on it with identical results | no |
-| M2 | Brief format, `attach`, `collect`, checks for `dev` and `content`, `rank`, shortlist report | no |
+| M2 ✅ | Brief format, `attach`, `collect`, checks for `dev` and `content`, `rank`, shortlist report | no (except `publish --confirm`) |
 | M3 | `decide` with payout rules, request-changes comments, spend guard on approvals, `close` | yes |
 | M4 | Participant pre-check (`check` command and `review_precheck` tool) | no |
 | M5 | Stage verification pass (section 9), mock updated to match | yes, small |
@@ -150,6 +150,7 @@ M1, M2 and M4 can be built and demoed fully on the mock, without funds.
 4. **Statuses.** Which statuses does a submission pass through after `approve`?
 5. **Visibility.** Can participants see each other's submissions? This changes how much duplicate detection matters.
 6. **Network.** Stage bounties use the mainnet USDC mint. Does stage move real USDC?
+7. **Amount units in task details.** Discovery reports `asset.amount` as a base-unit string; `tasks.get` types it as a number. `attach` assumes base units for the pool it displays.
 
 ## 10. Risks
 

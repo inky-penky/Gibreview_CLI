@@ -1,0 +1,32 @@
+# Review brief for a code bounty. Start one with: gibreview init brief.yaml --preset dev
+name: Add retry with backoff to the payments SDK
+preset: dev
+description: |
+  The payments SDK gives up on the first HTTP 429. Add retries with exponential backoff, honour Retry-After,
+  and add tests for each status code.
+
+  Open a pull request against acme/payments-sdk. It must pass CI.
+bounty:
+  pool: "50.00"
+  deadlineHours: 120
+  tags: [Development, TypeScript]
+template:                  # replaces the preset's default fields, here to pin the repository
+  - id: pr
+    label: Link to your GitHub pull request
+    type: url
+    checks:
+      - github: { repo: acme/payments-sdk, requireCi: true }
+  - id: notes
+    label: What you changed and how you tested it
+    type: text
+    checks:
+      - words: { min: 15, max: 400 }
+criteria:
+  - { text: Retries 429 and 5xx with backoff and honours Retry-After, weight: 60 }
+  - { text: Tests cover each status code, weight: 30 }
+  - { text: Small, readable change, weight: 10 }
+payout:
+  rule: winner
+  amounts: ["50.00"]
+review:
+  order: reputation

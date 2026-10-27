@@ -50,7 +50,7 @@ git clone https://github.com/inky-penky/Gibwork_Bug_Bash_CLI.git gibwork-bugbash
 cd gibwork-bugbash
 npm install          # also builds dist/ via the prepare script
 npm link             # optional, puts `bugbash` and `bugbash-mcp` on your PATH
-npm test             # 42 tests, including a full end-to-end run on the simulator
+npm test             # 53 tests, including a full end-to-end run on the simulator
 ```
 
 Without `npm link`, replace `bugbash` with `node dist/cli.js` in the commands below.
@@ -309,6 +309,39 @@ To watch an agent session end to end on the simulator, run this.
 node examples/mcp-agent-demo.mjs
 ```
 
+## Review Copilot (preview): review any Gibwork bounty
+
+`gibreview` brings the same approach to any bounty, not only QA. It checks every submission against the bounty's template and rules and ranks them into a shortlist, with a reason for every verdict. It can review a bounty you created on the Gibwork website (`attach`, read-only), or publish a new one from a brief. Paying winners (`decide`) is the next milestone; today nothing it does moves money except `publish --confirm`. The plan is in [docs/review-copilot-plan.md](docs/review-copilot-plan.md).
+
+```bash
+gibreview init brief.yaml --preset content     # or --preset dev
+gibreview attach <taskId> --brief brief.yaml   # review an existing bounty, or:
+gibreview publish brief.yaml --confirm         # create and fund a new one
+gibreview collect                              # fetch submissions and run the checks
+gibreview rank                                 # shortlist, plus review-report/review.md and review.json
+gibreview show @username                       # one submission with every check result
+```
+
+Try it offline with `--mock` on `publish` or `attach`:
+
+```
+  ★ #1  eligible       @ada_writes      2 checks passed
+  ★ #2  eligible       @tunde.docs      2 checks passed
+     –  needs changes  @kemi_b          https://dev.to/kemi/payments-guide-404 returns 404 (page not found)
+     –  needs changes  @shorty          summary has 6 words, needs at least 30
+     –  disqualified   @copycat         86% the same as @ada_writes's earlier submission
+     –  disqualified   @late_lara       sent …, after the deadline …
+     –  invalid        @quickcash99     no SUBMISSION block: the template was not used
+```
+
+| Preset | Template | Checks |
+| --- | --- | --- |
+| `content` | `link`, `summary` | link opens, summary 30 to 250 words |
+| `dev` | `pr`, `notes` | GitHub pull request on the right repo, not closed unmerged, CI passing; notes length |
+| `custom` | your own fields | `reachable`, `domain`, `words`, `github` on any field |
+
+Every brief also checks for duplicates (the same link, or text at or above `review.duplicates` similarity to an earlier submission) and for work sent after the deadline. Checks never count against a participant when a site can't be reached or rate-limits the check: those are reported as unverified. Set `GITHUB_TOKEN` for higher GitHub rate limits. See [examples/review/](examples/review/) for annotated briefs.
+
 ## CI release gate
 
 [`examples/github-action-release-gate.yml`](examples/github-action-release-gate.yml) collects results, optionally pays testers, uploads the reports and publishes `junit.xml` as a check. Human test results show up next to your unit tests, and a blocked release fails the job.
@@ -367,8 +400,10 @@ src/
   generate/     URL → page model → draft test plan (rule-based and AI writers)
   csvcases.ts   CSV/TSV case reader (column mapping, priorities, step splitting)
   importplan.ts bugbash import, CSV → test plan
+  review/       gibreview: brief format, checks, collect and rank, shortlist report, offline web for --mock
   test/         node:test unit and end-to-end tests
-examples/       sample plan, demo scripts, CI workflow, sample output
+examples/       sample plan, demo scripts, CI workflow, sample output, review briefs
+docs/           Review Copilot plan
 ```
 
 ## Limitations and next steps

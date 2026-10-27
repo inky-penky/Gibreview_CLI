@@ -6,3 +6,5 @@ dist/
 .bugbash/
 bugbash-report/
 *.tmp
+.gibreview/
+review-report/

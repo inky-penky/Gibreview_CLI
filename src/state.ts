@@ -45,14 +45,22 @@ export interface RunState {
   collectedAt?: string;
 }
 
-export class Store {
-  constructor(readonly dir: string) {}
+/**
+ * Run files on disk, one JSON file per run, saved atomically and changed under a per-run lock.
+ * Generic so QA runs (RunState) and review runs share the same guarantees.
+ */
+export class Store<S extends { runId: string } = RunState> {
+  constructor(
+    readonly dir: string,
+    /** Shown when there is no run yet, e.g. 'Start one with "bugbash plan <testplan.yaml>".' */
+    private readonly startHint = 'Start one with "bugbash plan <testplan.yaml>".',
+  ) {}
 
   private runPath(runId: string) {
     return join(this.dir, 'runs', `${runId}.json`);
   }
 
-  async save(run: RunState): Promise<void> {
+  async save(run: S): Promise<void> {
     await mkdir(join(this.dir, 'runs'), { recursive: true });
     const path = this.runPath(run.runId);
     const tmp = `${path}.tmp`;
@@ -73,9 +81,9 @@ export class Store {
    * Runs fn with an exclusive lock on the run and a copy loaded inside the lock, so a CLI and an agent
    * (or two terminals) can never publish, pay or refund the same run at the same time.
    */
-  async withRun<T>(runId: string | undefined, fn: (run: RunState) => Promise<T>): Promise<T> {
+  async withRun<T>(runId: string | undefined, fn: (run: S) => Promise<T>): Promise<T> {
     const id = runId ?? (await this.currentRunId());
-    if (!id) throw new Error('No active run. Start one with "bugbash plan <testplan.yaml>".');
+    if (!id) throw new Error(`No active run. ${this.startHint}`);
     const release = await this.lock(id);
     try {
       return await fn(await this.load(id));
@@ -106,11 +114,11 @@ export class Store {
     throw new Error(`Could not lock run ${runId}`);
   }
 
-  async load(runId?: string): Promise<RunState> {
+  async load(runId?: string): Promise<S> {
     const id = runId ?? (await this.currentRunId());
-    if (!id) throw new Error('No active run. Start one with "bugbash plan <testplan.yaml>".');
+    if (!id) throw new Error(`No active run. ${this.startHint}`);
     try {
-      return JSON.parse(await readFile(this.runPath(id), 'utf8')) as RunState;
+      return JSON.parse(await readFile(this.runPath(id), 'utf8')) as S;
     } catch {
       throw new Error(`Run "${id}" not found in ${this.dir}/runs`);
     }

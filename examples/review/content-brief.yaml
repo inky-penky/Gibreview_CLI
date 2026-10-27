@@ -1,0 +1,21 @@
+# Review brief for a writing bounty. Start one with: gibreview init brief.yaml --preset content
+name: Beginner guide to the payments API
+preset: content            # default fields: link (must open) and summary (30 to 250 words)
+description: |
+  Write a beginner-friendly guide to our three payments endpoints: create a payment, check its status and refund it.
+
+  Publish it on your own blog or a developer site and include a full request and response example for every call.
+bounty:                    # only used by "gibreview publish"; ignored by "gibreview attach"
+  pool: "30.00"
+  deadlineHours: 72
+  tags: [Docs, Writing]
+criteria:
+  - { text: Covers all three endpoints with working examples, weight: 40 }
+  - { text: Accurate against the API reference, weight: 40 }
+  - { text: Clear for someone new to payments, weight: 20 }
+payout:
+  rule: top-n
+  amounts: ["15.00", "10.00", "5.00"]
+review:
+  duplicates: 0.85         # a later submission this similar to an earlier one is a copy
+  order: first-come        # tie-breaker: first-come or reputation

@@ -45,7 +45,8 @@
   "type": "module",
   "bin": {
     "bugbash": "dist/cli.js",
-    "bugbash-mcp": "dist/mcp.js"
+    "bugbash-mcp": "dist/mcp.js",
+    "gibreview": "dist/review/cli.js"
   },
   "engines": {
     "node": ">=22"

@@ -20,6 +20,7 @@ interface MockTask {
   perTester: string;
   createdAt: string;
   refunded: boolean;
+  deadline?: string | null;
 }
 
 interface MockSubmission {
@@ -38,6 +39,17 @@ interface Ledger {
 }
 
 const TESTERS = ['ada_qa', 'tunde.tests', 'kemi_bugs', 'quickcash99'];
+
+/** Gibwork track records for simulated participants. */
+const REPUTATION: Record<string, { approvedTaskSubmissions: number; rejectedTaskSubmissions: number; rating: number }> = {
+  ada_writes: { approvedTaskSubmissions: 14, rejectedTaskSubmissions: 1, rating: 4.9 },
+  ada_dev: { approvedTaskSubmissions: 22, rejectedTaskSubmissions: 2, rating: 4.8 },
+  'tunde.docs': { approvedTaskSubmissions: 6, rejectedTaskSubmissions: 0, rating: 4.7 },
+  'tunde.codes': { approvedTaskSubmissions: 9, rejectedTaskSubmissions: 1, rating: 4.6 },
+  kemi_b: { approvedTaskSubmissions: 3, rejectedTaskSubmissions: 2, rating: 4.1 },
+  quickcash99: { approvedTaskSubmissions: 0, rejectedTaskSubmissions: 31, rating: 1.2 },
+  copycat: { approvedTaskSubmissions: 1, rejectedTaskSubmissions: 9, rating: 2.0 },
+};
 
 const DEVICES: Array<[RegExp, string[]]> = [
   [/android/i, ['Samsung Galaxy A14, Android 14, Chrome 129', 'Tecno Spark 20, Android 13, Chrome 128', 'Infinix Hot 40i, Android 13, Chrome 129']],
@@ -79,6 +91,7 @@ export class MockGibwork {
         perTester: input.minSubmissionAmount,
         createdAt: new Date().toISOString(),
         refunded: false,
+        deadline: input.deadline ?? null,
       };
       l.tasks.push(task);
       await this.write(l);
@@ -101,7 +114,18 @@ export class MockGibwork {
       const l = await this.read();
       const t = l.tasks.find((x) => x.id === taskId);
       if (!t) throw new Error(`mock: task ${taskId} not found`);
-      return { id: t.id, title: t.title, content: t.content, isOpen: !t.refunded } as never;
+      return {
+        id: t.id,
+        title: t.title,
+        content: t.content,
+        createdAt: t.createdAt,
+        deadline: t.deadline ?? null,
+        isOpen: !t.refunded,
+        status: t.refunded ? 'refunded' : 'complete',
+        // Base units, as the discovery endpoint reports them.
+        asset: { id: 'mock-usdc', mintAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', symbol: 'USDC', imageUrl: null, amount: Math.round(Number(t.amount) * 1e6), price: 1, decimals: 6 },
+        minSubmissionAmount: Math.round(Number(t.perTester) * 1e6),
+      } as never;
     },
 
     refund: async (taskId: string) => {
@@ -134,7 +158,7 @@ export class MockGibwork {
         rejectReason: s.rejectReason,
         createdAt: s.createdAt,
         createdBy: s.username,
-        user: { username: s.username },
+        user: { username: s.username, ...(REPUTATION[s.username] ?? { approvedTaskSubmissions: 0, rejectedTaskSubmissions: 0, rating: 0 }) },
         comments: [],
         media: [],
       }));
@@ -174,6 +198,7 @@ export class MockGibwork {
 function simulateTesters(task: MockTask): MockSubmission[] {
   const text = htmlToText(task.content);
   const caseIds = [...text.matchAll(/^([A-Za-z0-9][\w.-]*): PASS \| FAIL \| BLOCKED/gm)].map((m) => m[1]);
+  if (!caseIds.length && /^SUBMISSION$/m.test(text)) return simulateReviewSubmissions(task, text);
   const devices = DEVICES.find(([re]) => re.test(task.title))![1];
   const base = new Date(task.createdAt).getTime();
   const at = (mins: number) => new Date(base + mins * 60_000).toISOString();
@@ -212,6 +237,66 @@ function simulateTesters(task: MockTask): MockSubmission[] {
     [TESTERS[3], '<p>Tested everything, all good 👍 please approve</p>', 3],
   ];
 
+  return subs.map(([username, content, mins]) => ({
+    id: randomUUID(),
+    taskId: task.id,
+    content: content.startsWith('<') ? content : content.split('\n').map((l) => `<p>${l}</p>`).join(''),
+    status: 'OPEN' as const,
+    rejectReason: null,
+    createdAt: at(mins),
+    username,
+  }));
+}
+
+// ---------- review bounties ----------
+
+const WRITE_A =
+  'A step by step beginner guide to the three payments endpoints. It explains authentication first, then creates a payment, ' +
+  'reads its status and issues a refund, with a full request and response example for every call and a short section on common errors.';
+const WRITE_B =
+  'This tutorial walks through charging a customer with the payments API from a small Node script. It covers creating a payment intent, ' +
+  'polling for the result and refunding it, and ends with a checklist for going live with real keys.';
+
+/**
+ * A believable crowd for a review bounty, driven by the template in the bounty text: two strong entries,
+ * one with a dead link or failing CI, one too short or closed without merging, a copy of the first,
+ * a late entry when there is a deadline, and spam.
+ */
+function simulateReviewSubmissions(task: MockTask, text: string): MockSubmission[] {
+  const block = text.slice(text.search(/^SUBMISSION$/m));
+  const keys = [...block.matchAll(/^([a-z][\w-]*): </gm)].map((m) => m[1]);
+  const isDev = keys.includes('pr');
+  const base = new Date(task.createdAt).getTime();
+  const at = (mins: number) => new Date(base + mins * 60_000).toISOString();
+  const fill = (values: Record<string, string>) => ['SUBMISSION', ...keys.map((k) => `${k}: ${values[k] ?? 'n/a'}`), 'END'].join('\n');
+  const repo = 'https://github.com/acme/payments-sdk/pull';
+  const notes = (s: string) => `${s} I ran the unit tests and the example script locally before opening the pull request.`;
+
+  const subs: Array<[string, string, number]> = isDev
+    ? [
+        ['quickcash99', '<p>done, check my github 👍 please approve</p>', 4],
+        ['closed_carl', fill({ pr: `${repo}/39`, notes: notes('First attempt at the retry logic using a simple fixed delay between calls.') }), 30],
+        ['ada_dev', fill({ pr: `${repo}/41`, notes: notes('Added retry with backoff for 429 responses and a test for each status code.') }), 95],
+        ['tunde.codes', fill({ pr: `${repo}/43`, notes: notes('Implemented the retry helper and documented the new option in the README.') }), 140],
+        ['kemi_b', fill({ pr: `${repo}/45`, notes: notes('Retry support for rate limits, needs a second look at the timer handling.') }), 160],
+        ['wrongrepo_will', fill({ pr: 'https://github.com/someone/else/pull/2', notes: notes('Retry logic, written against my own fork of the project instead.') }), 170],
+      ]
+    : [
+        ['quickcash99', '<p>Wrote it, all good 👍 please approve</p>', 5],
+        ['ada_writes', fill({ link: 'https://dev.to/ada/payments-api-guide', summary: WRITE_A }), 30],
+        ['tunde.docs', fill({ link: 'https://hashnode.dev/tunde/charging-with-the-payments-api', summary: WRITE_B }), 50],
+        ['kemi_b', fill({ link: 'https://dev.to/kemi/payments-guide-404', summary: 'My guide covers the payments API in Python: authentication, creating a payment, checking it and refunding it, with code for each step and notes on the errors I hit along the way.' }), 70],
+        ['shorty', fill({ link: 'https://medium.com/@shorty/payments', summary: 'Wrote a quick guide, see link.' }), 80],
+        ['copycat', fill({ link: 'https://dev.to/copycat/payments-guide', summary: WRITE_A.replace('beginner', 'beginners') }), 90],
+      ];
+  if (task.deadline) {
+    const late = Math.round((Date.parse(task.deadline) - base) / 60_000) + 60;
+    subs.push(
+      isDev
+        ? ['late_lara', fill({ pr: `${repo}/41`, notes: notes('Retry support, sorry this is late, my laptop broke during the week.') }), late]
+        : ['late_lara', fill({ link: 'https://dev.to/lara/payments', summary: `${WRITE_B} Sorry this is late, my laptop broke during the week.` }), late],
+    );
+  }
   return subs.map(([username, content, mins]) => ({
     id: randomUUID(),
     taskId: task.id,
