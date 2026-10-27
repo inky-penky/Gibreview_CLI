@@ -41,6 +41,15 @@ test('brief validation explains what is wrong', () => {
   assert.match(String(issues({ ...base, template: [{ id: 'notes', label: 'Notes', type: 'text', checks: ['reachable'] }] })), /needs a url field/);
   assert.match(String(issues({ ...base, preset: 'content', payout: { rule: 'winner', amounts: ['5', '3'] } })), /use top-n/);
   assert.match(String(issues({ ...base, preset: 'content', bounty: { pool: '10' }, payout: { rule: 'top-n', amounts: ['8', '5'] } })), /more than the pool/);
+  assert.match(String(issues({ ...base, preset: 'content', payout: { rule: 'threshold', amounts: ['5', '3'] } })), /same amount/);
+});
+
+test('a threshold payout pays as many submissions as the pool covers', () => {
+  const b = validateBrief({ ...base, preset: 'content', bounty: { pool: '50' }, payout: { rule: 'threshold', amounts: ['5'] } });
+  assert.equal(winnerSlots(b), 10);
+  assert.equal(winnerSlots(b, 2_000), 4); // an attached task's pool wins over the brief's
+  assert.equal(winnerSlots({ ...b, payout: { ...b.payout!, maxWinners: 3 } }), 3);
+  assert.match(htmlToText(briefContent(b, 'run-1')), /paid 5 USDC, up to 10 submissions/);
 });
 
 test('the bounty text carries a template that parses back', () => {

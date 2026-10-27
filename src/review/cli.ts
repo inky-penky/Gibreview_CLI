@@ -6,7 +6,7 @@ import { dirname, join, resolve } from 'node:path';
 import { Command, Option } from 'commander';
 import { describeError } from '../engine.js';
 import { createClient, loadEnvFiles, resolveEnvironment } from '../gibwork.js';
-import { PlanError } from '../plan.js';
+import { PlanError, toCents } from '../plan.js';
 import { Store } from '../state.js';
 import { htmlToText } from '../template.js';
 import { loadBrief, winnerSlots } from './brief.js';
@@ -106,7 +106,7 @@ program
   .action(async (opts: { out: string }) => {
     const state = await store().load(program.opts().run);
     const ranked = rankReview(state);
-    const slots = winnerSlots(state.brief);
+    const slots = winnerSlots(state.brief, toCents(state.task.pool));
     console.log(`${c.bold(state.brief.name)}  ${envBadge(state.environment)}  ${c.dim(`shortlist of ${slots}`)}\n`);
     for (const r of ranked) {
       const s = r.submission;

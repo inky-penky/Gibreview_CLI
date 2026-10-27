@@ -71,7 +71,7 @@ export const BriefSchema = z
         rule: z.enum(['winner', 'top-n', 'threshold']).default('winner'),
         /** top-n: one amount per place. winner and threshold: one amount per paid submission. */
         amounts: z.array(money).min(1),
-        /** threshold: most submissions to pay. */
+        /** threshold: most submissions to pay. Defaults to as many as the pool covers. */
         maxWinners: z.number().int().min(1).optional(),
       })
       .optional(),
@@ -106,6 +106,9 @@ export const BriefSchema = z
     if (b.payout?.rule === 'winner' && b.payout.amounts.length > 1) {
       ctx.addIssue({ code: 'custom', path: ['payout', 'amounts'], message: 'winner pays one amount; use top-n for several places' });
     }
+    if (b.payout?.rule === 'threshold' && b.payout.amounts.length > 1) {
+      ctx.addIssue({ code: 'custom', path: ['payout', 'amounts'], message: 'threshold pays every accepted submission the same amount; use top-n for different amounts per place' });
+    }
     if (b.bounty && b.payout && totalPayoutCents(b) > toCents(b.bounty.pool)) {
       ctx.addIssue({ code: 'custom', path: ['payout'], message: `payouts add up to ${fromCents(totalPayoutCents(b))}, more than the pool of ${b.bounty.pool}` });
     }
@@ -114,20 +117,27 @@ export const BriefSchema = z
 export type Brief = z.output<typeof BriefSchema>;
 
 /** Most the payout rule can pay in total. */
-export function totalPayoutCents(b: Pick<Brief, 'payout'>): number {
+export function totalPayoutCents(b: Pick<Brief, 'payout' | 'bounty'>, poolCents?: number): number {
   const p = b.payout;
   if (!p) return 0;
   const cents = p.amounts.map(toCents);
   if (p.rule === 'top-n') return cents.reduce((n, c) => n + c, 0);
-  if (p.rule === 'threshold') return cents[0] * (p.maxWinners ?? 1);
+  if (p.rule === 'threshold') return cents[0] * winnerSlots(b, poolCents);
   return cents[0];
 }
 
-/** How many submissions the payout rule pays, which is how long the shortlist is. */
-export function winnerSlots(b: Brief): number {
+/**
+ * How many submissions the payout rule pays, which is how long the shortlist is. A threshold
+ * without maxWinners pays as many as the pool covers: the brief's pool, or the attached task's.
+ */
+export function winnerSlots(b: Pick<Brief, 'payout' | 'bounty'>, poolCents?: number): number {
   const p = b.payout;
   if (!p) return 1;
-  return p.rule === 'top-n' ? p.amounts.length : p.rule === 'threshold' ? (p.maxWinners ?? 1) : 1;
+  if (p.rule === 'top-n') return p.amounts.length;
+  if (p.rule !== 'threshold') return 1;
+  if (p.maxWinners) return p.maxWinners;
+  const pool = poolCents ?? (b.bounty ? toCents(b.bounty.pool) : 0);
+  return Math.max(1, Math.floor(pool / toCents(p.amounts[0])));
 }
 
 export function validateBrief(raw: unknown): Brief {
@@ -188,7 +198,7 @@ export function briefContent(b: Brief, runId: string): string {
       b.payout.rule === 'top-n'
         ? `Places are paid ${amounts.join(', ')}.`
         : b.payout.rule === 'threshold'
-          ? `Every accepted submission is paid ${amounts[0]}, up to ${b.payout.maxWinners ?? 1}.`
+          ? `Every accepted submission is paid ${amounts[0]}, up to ${winnerSlots(b)} submissions.`
           : `The best submission is paid ${amounts[0]}.`;
     parts.push(`<p><strong>Payout:</strong> ${esc(how)}</p>`);
   }

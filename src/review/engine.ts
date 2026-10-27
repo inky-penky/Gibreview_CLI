@@ -269,7 +269,7 @@ export function rankReview(state: ReviewState): RankedEntry[] {
       : a.createdAt.localeCompare(b.createdAt) || repScore(b.reputation) - repScore(a.reputation);
   const ordered = [...subs].sort((a, b) => VERDICT_ORDER[a.verdict] - VERDICT_ORDER[b.verdict] || warnCount(a) - warnCount(b) || tieBreak(a, b));
 
-  const slots = winnerSlots(state.brief);
+  const slots = winnerSlots(state.brief, toCents(state.task.pool));
   let place = 0;
   return ordered.map((s) => {
     const warnings = s.checks.filter((c) => c.status === 'warn').map((c) => c.message);

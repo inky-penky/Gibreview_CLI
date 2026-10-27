@@ -50,7 +50,7 @@ git clone https://github.com/inky-penky/Gibwork_Bug_Bash_CLI.git gibwork-bugbash
 cd gibwork-bugbash
 npm install          # also builds dist/ via the prepare script
 npm link             # optional, puts `bugbash` and `bugbash-mcp` on your PATH
-npm test             # 53 tests, including a full end-to-end run on the simulator
+npm test             # 54 tests, including a full end-to-end run on the simulator
 ```
 
 Without `npm link`, replace `bugbash` with `node dist/cli.js` in the commands below.

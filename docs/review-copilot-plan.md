@@ -4,7 +4,7 @@ Status: proposal · Branch: `release-hardening` · Supersedes the QA-only scope 
 
 ## 1. Goal
 
-Give Gibwork bounty creators a CLI and MCP server that turns a pile of submissions into a ranked shortlist with a reason for every decision, then settles the bounty through Gibwork's escrow. Give participants a free pre-check before they pay the submission fee, and a chance to fix work instead of an instant rejection.
+Give Gibwork bounty creators a CLI and MCP server that turns a pile of submissions into a ranked shortlist with a reason for every decision, then settles the bounty through Gibwork's escrow. Give participants a free pre-check before they submit, and a chance to fix work instead of an instant rejection.
 
 **Non-goals.** No web dashboard. No custody: Gibwork escrow holds and pays all funds. Nothing is approved without the creator's confirmation; AI scores are advice, never a decision.
 
@@ -21,7 +21,22 @@ Give Gibwork bounty creators a CLI and MCP server that turns a pile of submissio
 | Clarify the bounty | `tasks.update` | Content and deadline only |
 | Close | `tasks.refund`, `tasks.prepareRefund` | Refunds carry their own platform fee (quote available) |
 
-**Unverified, must be checked on stage (section 9):** the minimum pool rule, approving several submissions with different amounts, whether a participant can answer a comment without paying a new fee, and the submission statuses after approval.
+**How payouts work (confirmed by the project owner, 2026-10-27):**
+
+- A creator pays winners in one of two ways, and Gibwork supports both:
+  - a fixed amount for every accepted submission (`threshold`)
+  - a set amount per place for the top 3, top 10 and so on (`top-n`)
+  - `winner` is `top-n` with one place
+- Approving one winner does not close the bounty. Every winner is paid by its own `approve` call.
+- There is no minimum per approval. Each winner gets the amount for their place.
+- The whole pool goes to winners. Any Gibwork fee is paid by the creator, not taken from winners.
+- Money nobody wins is refunded to the creator through `close`.
+
+**Participation.**
+- The SDK documents a submission fee ("currently 0.15 USDC") for submissions made through the API. Gibwork's site does not show a fee for joining bounties, so the copilot never assumes one. It reads the `fee` quote when it matters.
+- Some bounties have eligibility rules: `requiresPremium` (subscribers only), verified accounts, Twitter follower or engagement minimums, or Discord server and role membership. Gibwork enforces these before anyone can submit, so review does not check them.
+
+**Still unverified, must be checked on stage (section 9):** the pool amount format, whether a participant can answer a comment without submitting again, and the submission statuses after approval.
 
 ## 3. How a creator uses it
 
@@ -40,7 +55,7 @@ Agent version, over MCP: "Review the submissions on my API-docs bounty, shortlis
 ## 4. How a participant uses it
 
 1. The bounty text contains a **submission template** and the acceptance criteria.
-2. Before paying the 0.15 USDC submission fee, they run the free pre-check:
+2. Before submitting, they run the free pre-check:
    `npx gibreview check <taskId> my-submission.txt` (or ask their own agent, through the MCP tool `review_precheck`).
    It reads the template from the bounty and reports every problem a creator-side check would find.
 3. If a fixable check fails after submitting (a dead link, a missing field), they get a comment asking for the fix instead of a rejection.
@@ -145,8 +160,8 @@ M1, M2 and M4 can be built and demoed fully on the mock, without funds.
 ## 9. Questions for Gibwork and the stage pass
 
 1. **Minimum pool.** `prepareCreate` rejected `"1.00"` and `"1.01"` with "must be between 1.00 and 100000.00 inclusive". What format and minimum does `payment.amount` expect?
-2. **Multiple winners.** Can one bounty approve several submissions with different amounts? What does `minSubmissionAmount` limit?
-3. **Changes without a new fee.** Can a participant reply to a creator comment, or edit their submission, without paying the fee again?
+2. ~~**Multiple winners.**~~ Answered: several approvals with different amounts, no minimum per approval, and leftovers are refunded (section 2). Still worth confirming on stage that a second `approve` succeeds after the first.
+3. **Changes without resubmitting.** Can a participant reply to a creator comment, or edit their submission, without submitting again (and paying the SDK submission fee when it applies)?
 4. **Statuses.** Which statuses does a submission pass through after `approve`?
 5. **Visibility.** Can participants see each other's submissions? This changes how much duplicate detection matters.
 6. **Network.** Stage bounties use the mainnet USDC mint. Does stage move real USDC?
@@ -159,5 +174,5 @@ M1, M2 and M4 can be built and demoed fully on the mock, without funds.
 | AI scores feel unfair | Advisory only, explanation per score, creator confirms every payout |
 | Checks fetch participant links | Fetch with timeouts and size limits, never execute content |
 | GitHub API rate limits for `github-pr` | Optional `GITHUB_TOKEN`; degrade to "unverified" instead of failing |
-| Rejected participants lose their fee | Pre-check first, request-changes before reject |
+| Rejected participants lose their effort (and the fee, when one applies) | Pre-check first, request-changes before reject |
 | Gibwork API differs from assumptions | M5 before any production use; mock mirrors what stage shows |
