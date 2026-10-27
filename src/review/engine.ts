@@ -58,8 +58,8 @@ export interface ReviewTask {
   publishedBy: 'copilot' | 'attached';
   /**
    * Whether the signing wallet (SOLANA_PRIVATE_KEY) may pay, reject and refund on this bounty. Only the wallet
-   * that created a bounty can. false for one made on the website from another wallet or by card: decide then
-   * gives a checklist to do on the website instead of paying.
+   * that created a bounty can. Gibwork makes a Solana wallet for every account and the website pays only from it,
+   * so this is false for a bounty made on gibwork.com: decide then gives a checklist to do on the website instead.
    */
   walletCanPay?: boolean;
   /** attach: whether the bounty text lists the brief's rules, which participants' pre-checks rely on. */

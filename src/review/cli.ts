@@ -85,8 +85,9 @@ program
     console.log(`${c.green('✓')} Attached ${c.bold(state.task.title)}  ${envBadge(env)}`);
     console.log(`  pool ${state.task.pool} ${state.task.symbol}${state.task.minimum ? ` · minimum ${state.task.minimum} per approved submission` : ''}${state.task.deadline ? ` · deadline ${state.task.deadline}` : ''} · run ${state.runId}`);
     if (!state.task.walletCanPay) {
-      console.log(c.yellow(`\n! This bounty was not created by the wallet in SOLANA_PRIVATE_KEY, so gibreview cannot pay, reject or refund on it.`));
-      console.log(c.yellow(`  It still reviews and ranks everything; "decide" gives you a checklist to do on gibwork.com as the bounty's creator.`));
+      console.log(c.yellow(`\n! This bounty belongs to a Gibwork account wallet, not the wallet in SOLANA_PRIVATE_KEY, so gibreview`));
+      console.log(c.yellow(`  cannot pay, reject or refund on it. Bounties made on gibwork.com are paid from the account's own wallet.`));
+      console.log(c.yellow(`  gibreview still reviews and ranks everything; "decide" gives you a checklist to do on gibwork.com.`));
     }
     const below = state.task.minimum ? brief.payout.amounts.filter((a) => Number(a) < Number(state.task.minimum)) : [];
     if (below.length) {
@@ -145,7 +146,7 @@ program
         console.log(c.yellow(`                 after the payouts; "gibreview close" refunds it. Or set bounty.pool to $${tier.amount} and raise the payouts.`));
       }
     }
-    console.log(`  pay with       Wallet: your Gibwork account's wallet balance (deposit USDC to it first if it is short)`);
+    console.log(`  pay with       Wallet: the Solana wallet Gibwork made for your account (deposit USDC to it first if it is short)`);
     console.log(`                 or Card. Any platform fee is shown before you pay.`);
     console.log(`  ${c.yellow('Authorize & Publish moves the money.')} Everything before it is safe to click through.`);
     if (access === 'link') console.log(c.dim(`\nOnly people with the bounty's link can take part, so share it with them.`));
@@ -211,7 +212,7 @@ program
       const plan = planDecisions(state);
       const sym = state.task.symbol;
       const code = decisionCode(state, plan);
-      // A bounty made on the website from another wallet (or by card) can only be paid on the website.
+      // A bounty made on gibwork.com belongs to the account's own wallet, so it can only be paid on the website.
       const byHand = state.task.walletCanPay === false;
       const acting = opts.confirm === code && Boolean(opts.markDone || (opts.apply && !byHand));
       const count = (k: ReviewAction['action']) => plan.actions.filter((a) => a.action === k).length;
@@ -236,8 +237,8 @@ program
           console.log(c.dim('\nDry run. Nothing was paid, posted or rejected.'));
         }
         if (!byHand) return console.log(`To apply exactly this plan: ${c.bold(`gibreview decide --apply --confirm ${code}`)}`);
-        console.log(`\nThis bounty was created by another wallet (on the website, or paid by card), and only that account can pay,`);
-        console.log(`reject or refund on it. Do these on gibwork.com, signed in as the bounty's creator:\n`);
+        console.log(`\nThis bounty was made on gibwork.com, so it belongs to the wallet Gibwork created for the creator's account,`);
+        console.log(`and only that account can pay, reject or refund on it. Do these on gibwork.com, signed in as the creator:\n`);
         websiteChecklist(plan, sym).forEach((step, i) => console.log(`  ${i + 1}. ${step}`));
         return console.log(`\nWhen they are all done: ${c.bold(`gibreview decide --mark-done --confirm ${code}`)}`);
       }
