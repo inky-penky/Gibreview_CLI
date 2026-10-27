@@ -58,9 +58,10 @@ Give Gibwork bounty creators a CLI and MCP server that turns a pile of submissio
 
 **Who can pay on a bounty.** The SDK signs with `SOLANA_PRIVATE_KEY` and spends that wallet's own USDC; only the wallet that created a bounty can approve, reject or refund on it (`tasks.list` reports `canApprove`, `canReject`, `canRefund`). A bounty made on gibwork.com belongs to the account's Gibwork-created wallet, not to an external wallet such as Phantom, so `attach` sets `walletCanPay: false` and `decide` prints a website checklist instead of paying; `decide --mark-done` records it. Bounties made with `gibreview publish` belong to the `SOLANA_PRIVATE_KEY` wallet, and gibreview pays on them itself.
 
+The account wallet **cannot be exported**; the app only offers deposit and withdraw (confirmed by the project owner, 2026-10-27). So for bounties made on gibwork.com the website checklist is the permanent flow: gibreview reviews, ranks and plans, and the creator approves, comments, rejects and refunds on the site. Automatic payment is only for bounties made with `gibreview publish`.
+
 Open questions for Gibwork:
-- Can a creator export their account wallet's private key (as embedded wallets often allow)? Put in `.env.local`, it would let gibreview pay on bounties made on the website too.
-- Or can an account delegate approvals to another wallet, or link an external wallet?
+- Can an account delegate approvals to another wallet, or link an external wallet? That would let gibreview pay on website bounties without exporting anything.
 - Does a bounty made through the SDK with an external wallet show up under a Gibwork account, and which one?
 
 **Still unverified, must be checked on stage (section 9):** the pool amount format, whether a participant can answer a comment without submitting again, and the submission statuses after approval.
