@@ -375,3 +375,38 @@ export function compareRules(template: BriefField[], bountyContent: string): 'ma
   const key = (fs: BriefField[]) => JSON.stringify(fs.map((f) => [f.id, f.type, f.required, f.checks]));
   return key(published) === key(template) ? 'match' : 'differ';
 }
+
+export interface WebsiteGuide {
+  title: string;
+  category: SiteCategory;
+  access: string;
+  discord?: { guildName: string; roleIds: string[] };
+  /** Due date to pick, or null when the brief sets none. */
+  due: string | null;
+  /** The payment tab's custom minimum per approved submission. */
+  minimum: string;
+  /** The description to paste, exactly. */
+  description: string;
+  symbol: string;
+  /** The amount to pick on the payment page, or null when the pool is above what the website offers. */
+  bountyAmount: { amount: number; unlocks: string; exact: boolean; leftover: string } | null;
+  pool: string;
+}
+
+/** Everything to enter on gibwork.com's "Create Bounty" pages for this brief. */
+export function websiteGuide(b: Brief, now = new Date()): WebsiteGuide {
+  const pool = b.bounty?.pool ?? fromCents(totalPayoutCents(b));
+  const tier = websitePool(toCents(pool));
+  return {
+    title: b.name,
+    category: siteCategory(b),
+    access: ACCESS_LABEL[b.bounty?.access ?? 'everyone'],
+    ...(b.bounty?.access === 'discord' && b.bounty.discord ? { discord: { guildName: b.bounty.discord.guildName, roleIds: b.bounty.discord.roleIds } } : {}),
+    due: b.bounty?.deadlineHours ? new Date(now.getTime() + b.bounty.deadlineHours * 3_600_000).toDateString() : null,
+    minimum: minimumPayment(b),
+    description: briefText(b),
+    symbol: b.bounty?.symbol ?? 'USDC',
+    bountyAmount: tier ? { ...tier, leftover: fromCents(tier.amount * 100 - totalPayoutCents(b)) } : null,
+    pool,
+  };
+}

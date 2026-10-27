@@ -9,15 +9,18 @@ import { htmlToText } from './content.js';
 import { fromCents, PlanError } from './plan.js';
 import { applyTriage, collectRun, describeError, planRun, planTriage, publishRun, reportRun, summarize } from './engine.js';
 import { attentionNotes } from './report.js';
+import { registerReviewTools } from './review/mcp-tools.js';
 import { checkBudgetCap, confirmCode, guardSpend, paySpend, publishSpend, type GuardConfig } from './spendguard.js';
 
 loadEnvFiles();
 
 /**
- * MCP server so a coding agent can run a human QA pass as part of shipping:
- * "run the checkout regression on real phones and tell me if v2.3.0 is safe to release".
+ * gibreview MCP server. review_* tools let an agent review a Gibwork bounty for its creator:
+ * "review the submissions on my API-docs bounty and tell me who to pay". review_precheck lets a
+ * participant's agent check a draft. qa_* tools run the QA preset: "run the checkout regression on
+ * real phones and tell me if v2.3.0 is safe to release".
  *
- * Money-moving tools (publish, triage apply) need a confirmCode tied to the exact amount and action,
+ * Money-moving tools (qa_publish, qa_triage apply, review_decide apply) need a confirmCode tied to the exact amount and action,
  * which the agent gets alongside the cost it must show the user. The operator controls the rest from
  * the server's environment, which an agent cannot change: GIBREVIEW_MCP_ALLOW_PRODUCTION=1 to spend on
  * production, and GIBREVIEW_MCP_MAX_BUDGET to cap what any run may put into escrow.
@@ -294,32 +297,6 @@ server.registerTool(
   },
 );
 
-server.registerTool(
-  'review_precheck',
-  {
-    title: 'Check a bounty submission before sending it',
-    description:
-      "For participants: run a bounty's automated checks on a draft submission before submitting it. Read-only and free: nothing is submitted and no funds move. " +
-      'Rules come from the bounty text when it was published with gibreview. Show the user every failed check and the summary, and suggest fixes for fixable ones.',
-    inputSchema: {
-      taskId: z.string().describe('Gibwork task id of the bounty'),
-      submission: z.string().min(1).describe('The draft submission text, including the SUBMISSION block'),
-      environment: z.enum(['stage', 'production', 'mock']).default('stage'),
-    },
-    annotations: { readOnlyHint: true },
-  },
-  async ({ taskId, submission, environment }) => {
-    try {
-      const { precheck } = await import('./review/precheck.js');
-      const { mockFetch } = await import('./review/mockweb.js');
-      const client = createClient({ environment, stateDir: stateRoot });
-      const task = (await client.tasks.get(taskId)) as unknown as { title: string; content: string; deadline?: string | null };
-      const ctx = environment === 'mock' ? { fetch: mockFetch } : { fetch: globalThis.fetch as unknown as typeof mockFetch, githubToken: process.env.GITHUB_TOKEN };
-      return ok({ bounty: task.title, ...(await precheck({ content: task.content, deadline: task.deadline ?? null }, submission, ctx)) });
-    } catch (e) {
-      return fail(e);
-    }
-  },
-);
+registerReviewTools(server, { stateRoot, allowProduction: guard.allowProduction, ok, fail });
 
 await server.connect(new StdioServerTransport());

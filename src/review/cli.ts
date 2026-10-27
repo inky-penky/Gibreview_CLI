@@ -9,7 +9,7 @@ import { createClient, loadEnvFiles, resolveEnvironment } from '../gibwork.js';
 import { fromCents, PlanError, toCents } from '../plan.js';
 import { Store } from '../state.js';
 import { htmlToText } from '../template.js';
-import { ACCESS_LABEL, briefText, loadBrief, minimumPayment, siteCategory, totalPayoutCents, WEBSITE_POOLS, websitePool, winnerSlots } from './brief.js';
+import { loadBrief, WEBSITE_POOLS, websiteGuide, winnerSlots } from './brief.js';
 import type { CheckContext } from './checks.js';
 import { attachTask, collectReview, publishBrief, publishPreview, rankReview, type ReviewState } from './engine.js';
 import { applyDecisions, closePreview, closeReview, decisionCode, planDecisions, recordDecisions, websiteChecklist, type ReviewAction } from './decide.js';
@@ -113,44 +113,37 @@ program
   .option('--stdout', 'print only the description, e.g. to pipe into the clipboard ("| clip" on Windows)')
   .action(async (briefPath: string, opts: { out?: string; stdout?: boolean }) => {
     const brief = await loadBrief(briefPath);
-    const text = briefText(brief);
-    if (opts.stdout) return void process.stdout.write(text + '\n');
+    const g = websiteGuide(brief);
+    if (opts.stdout) return void process.stdout.write(g.description + '\n');
 
     // Only the description goes in the file, so the whole file can be pasted as it is.
     const out = opts.out ?? `${basename(briefPath).replace(/\.(ya?ml|json)$/i, '')}.description.txt`;
-    await writeFile(out, text + '\n');
-    const sym = brief.bounty?.symbol ?? 'USDC';
-    const category = siteCategory(brief);
-    const minimum = minimumPayment(brief);
-    const pool = brief.bounty?.pool ?? fromCents(totalPayoutCents(brief));
-    const access = brief.bounty?.access ?? 'everyone';
-    const due = brief.bounty?.deadlineHours ? `due ${new Date(Date.now() + brief.bounty.deadlineHours * 3_600_000).toDateString()}` : 'pick a due date';
+    await writeFile(out, g.description + '\n');
 
     console.log(`${c.green('✓')} Wrote the description to ${c.bold(out)}\n`);
     console.log(c.bold('On gibwork.com, Create Bounty:'));
-    console.log(`  title        ${brief.name}`);
-    console.log(`  category     ${category}`);
-    console.log(`  options      ${ACCESS_LABEL[access]} · ${due}`);
-    if (access === 'discord' && brief.bounty?.discord) console.log(c.dim(`               server ${brief.bounty.discord.guildName}${brief.bounty.discord.roleIds.length ? `, roles ${brief.bounty.discord.roleIds.join(', ')}` : ''}`));
-    console.log(`  payment      Custom minimum $${minimum} ${c.dim('(each approved submission is paid at least this; the tiers are only suggestions)')}`);
+    console.log(`  title        ${g.title}`);
+    console.log(`  category     ${g.category}`);
+    console.log(`  options      ${g.access} · ${g.due ? `due ${g.due}` : 'pick a due date'}`);
+    if (g.discord) console.log(c.dim(`               server ${g.discord.guildName}${g.discord.roleIds.length ? `, roles ${g.discord.roleIds.join(', ')}` : ''}`));
+    console.log(`  payment      Custom minimum $${g.minimum} ${c.dim('(each approved submission is paid at least this; the tiers are only suggestions)')}`);
     console.log(`  description  paste everything in ${out}`);
     console.log(c.bold('\nThen Continue to Payment:'));
-    const tier = websitePool(toCents(pool));
+    const tier = g.bountyAmount;
     if (!tier) {
-      console.log(c.red(`  The website offers bounty amounts up to $700 and your pool is ${pool} ${sym}.`));
+      console.log(c.red(`  The website offers bounty amounts up to $700 and your pool is ${g.pool} ${g.symbol}.`));
       console.log(c.red(`  Lower bounty.pool and the payouts, or create it with "gibreview publish", which can fund any amount.`));
     } else {
       console.log(`  bounty amount  ${c.bold(`$${tier.amount}`)} ${c.dim(`unlocks ${tier.unlocks}`)}`);
       if (!tier.exact) {
-        const left = fromCents(tier.amount * 100 - totalPayoutCents(brief));
-        console.log(c.yellow(`                 The website has no $${pool}, only $${WEBSITE_POOLS.map((t) => t.amount).join(', $')}. With $${tier.amount}, ${left} ${sym} is left`));
-        console.log(c.yellow(`                 after the payouts; "gibreview close" refunds it. Or set bounty.pool to $${tier.amount} and raise the payouts.`));
+        console.log(c.yellow(`                 The website has no $${g.pool}, only $${WEBSITE_POOLS.map((t) => t.amount).join(', $')}. With $${tier.amount}, ${tier.leftover} ${g.symbol}`));
+        console.log(c.yellow(`                 is left after the payouts; refund it when you close the bounty. Or set bounty.pool to $${tier.amount} and raise the payouts.`));
       }
     }
     console.log(`  pay with       Wallet: the Solana wallet Gibwork made for your account (deposit USDC to it first if it is short)`);
     console.log(`                 or Card. Any platform fee is shown before you pay.`);
     console.log(`  ${c.yellow('Authorize & Publish moves the money.')} Everything before it is safe to click through.`);
-    if (access === 'link') console.log(c.dim(`\nOnly people with the bounty's link can take part, so share it with them.`));
+    if (brief.bounty?.access === 'link') console.log(c.dim(`\nOnly people with the bounty's link can take part, so share it with them.`));
     console.log(c.dim(`\nAfter publishing: gibreview attach <taskId> --brief ${briefPath}`));
   });
 
