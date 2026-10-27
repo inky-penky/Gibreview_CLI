@@ -78,10 +78,10 @@ program
   .argument('<taskId>', 'Gibwork task id')
   .requiredOption('--brief <file>', 'brief describing the template and checks to apply')
   .addOption(new Option('--mock', 'use the offline simulator'))
-  .addOption(new Option('--prod', 'target Gibwork production (default is stage)'))
-  .action(async (taskId: string, opts: { brief: string; mock?: boolean; prod?: boolean }) => {
+  .addOption(new Option('--stage', 'target Gibwork stage (default is production, where gibwork.com bounties live)'))
+  .action(async (taskId: string, opts: { brief: string; mock?: boolean; stage?: boolean }) => {
     const brief = await loadBrief(opts.brief);
-    const env = resolveEnvironment(opts);
+    const env = resolveEnvironment(opts, 'production');
     const state = await attachTask(taskId, brief, resolve(opts.brief), env, client(env), store());
     console.log(`${c.green('✓')} Attached ${c.bold(state.task.title)}  ${envBadge(env)}`);
     console.log(`  pool ${state.task.pool} ${state.task.symbol}${state.task.minimum ? ` · minimum ${state.task.minimum} per approved submission` : ''}${state.task.deadline ? ` · deadline ${state.task.deadline}` : ''} · run ${state.runId}`);
@@ -288,10 +288,10 @@ program
   .argument('<file>', 'your draft submission, or - to read it from stdin')
   .option('--brief <file>', "the creator's brief, for bounties that do not list gibreview rules")
   .addOption(new Option('--mock', 'use the offline simulator'))
-  .addOption(new Option('--prod', 'target Gibwork production (default is stage)'))
-  .action(async (taskId: string, file: string, opts: { brief?: string; mock?: boolean; prod?: boolean }) => {
+  .addOption(new Option('--stage', 'target Gibwork stage (default is production, where gibwork.com bounties live)'))
+  .action(async (taskId: string, file: string, opts: { brief?: string; mock?: boolean; stage?: boolean }) => {
     const draft = file === '-' ? await readStdin() : await readFile(file, 'utf8').catch(() => Promise.reject(new Error(`Cannot read ${file}`)));
-    const env = resolveEnvironment(opts);
+    const env = resolveEnvironment(opts, 'production');
     const task = (await client(env).tasks.get(taskId)) as unknown as { title: string; content: string; deadline?: string | null };
     const template = opts.brief ? (await loadBrief(opts.brief)).template : undefined;
     const res = await precheck({ content: task.content, deadline: task.deadline ?? null }, draft, checkContext(env), { template });

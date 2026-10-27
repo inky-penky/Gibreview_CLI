@@ -34,10 +34,16 @@ export function loadEnvFiles(dir = process.cwd()): string[] {
   return loaded;
 }
 
-export function resolveEnvironment(opts: { mock?: boolean; prod?: boolean }): Environment {
+/**
+ * Which Gibwork environment a command uses. Commands that fund bounties default to stage; commands that only
+ * read an existing bounty (attach, check) default to production, where bounties made on gibwork.com live.
+ */
+export function resolveEnvironment(opts: { mock?: boolean; prod?: boolean; stage?: boolean }, fallback: Environment = 'stage'): Environment {
   if (opts.mock || process.env.GIBREVIEW_MOCK === '1') return 'mock';
-  if (opts.prod || process.env.GIBWORK_ENV === 'production') return 'production';
-  return 'stage';
+  if (opts.prod) return 'production';
+  if (opts.stage) return 'stage';
+  if (process.env.GIBWORK_ENV === 'production' || process.env.GIBWORK_ENV === 'stage') return process.env.GIBWORK_ENV;
+  return fallback;
 }
 
 export function createClient(cfg: ClientConfig): GibworkLike {
