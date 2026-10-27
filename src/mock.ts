@@ -130,6 +130,23 @@ export class MockGibwork {
       } as never;
     },
 
+    /** The signing wallet's own bounties. Every simulated bounty belongs to the simulated creator. */
+    list: async (query: { page?: number; limit?: number } = {}) => {
+      const l = await this.read();
+      const page = query.page ?? 1;
+      const limit = query.limit ?? 15;
+      const results = l.tasks.slice((page - 1) * limit, page * limit).map((t) => ({
+        id: t.id,
+        title: t.title,
+        isOpen: !t.refunded,
+        canEdit: true,
+        canApprove: !t.refunded,
+        canReject: !t.refunded,
+        canRefund: !t.refunded,
+      }));
+      return { results, page, limit, total: l.tasks.length, lastPage: Math.max(1, Math.ceil(l.tasks.length / limit)) } as never;
+    },
+
     refund: async (taskId: string) => {
       const l = await this.read();
       const t = l.tasks.find((x) => x.id === taskId);

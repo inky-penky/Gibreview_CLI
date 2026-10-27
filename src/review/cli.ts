@@ -12,7 +12,7 @@ import { htmlToText } from '../template.js';
 import { ACCESS_LABEL, briefText, loadBrief, minimumPayment, siteCategory, totalPayoutCents, WEBSITE_POOLS, websitePool, winnerSlots } from './brief.js';
 import type { CheckContext } from './checks.js';
 import { attachTask, collectReview, publishBrief, publishPreview, rankReview, type ReviewState } from './engine.js';
-import { applyDecisions, closePreview, closeReview, decisionCode, planDecisions, type ReviewAction } from './decide.js';
+import { applyDecisions, closePreview, closeReview, decisionCode, planDecisions, recordDecisions, websiteChecklist, type ReviewAction } from './decide.js';
 import { mockFetch } from './mockweb.js';
 import { precheck } from './precheck.js';
 import { writeShortlist } from './report.js';
@@ -84,6 +84,10 @@ program
     const state = await attachTask(taskId, brief, resolve(opts.brief), env, client(env), store());
     console.log(`${c.green('✓')} Attached ${c.bold(state.task.title)}  ${envBadge(env)}`);
     console.log(`  pool ${state.task.pool} ${state.task.symbol}${state.task.minimum ? ` · minimum ${state.task.minimum} per approved submission` : ''}${state.task.deadline ? ` · deadline ${state.task.deadline}` : ''} · run ${state.runId}`);
+    if (!state.task.walletCanPay) {
+      console.log(c.yellow(`\n! This bounty was not created by the wallet in SOLANA_PRIVATE_KEY, so gibreview cannot pay, reject or refund on it.`));
+      console.log(c.yellow(`  It still reviews and ranks everything; "decide" gives you a checklist to do on gibwork.com as the bounty's creator.`));
+    }
     const below = state.task.minimum ? brief.payout.amounts.filter((a) => Number(a) < Number(state.task.minimum)) : [];
     if (below.length) {
       console.log(c.red(`\n! ${below.join(', ')} ${state.task.symbol} in the brief's payout is below this bounty's minimum of ${state.task.minimum}.`));
@@ -141,7 +145,8 @@ program
         console.log(c.yellow(`                 after the payouts; "gibreview close" refunds it. Or set bounty.pool to $${tier.amount} and raise the payouts.`));
       }
     }
-    console.log(`  pay with       Wallet (deposit USDC first if the balance is short) or Card; any platform fee is shown before you pay`);
+    console.log(`  pay with       Wallet: your Gibwork account's wallet balance (deposit USDC to it first if it is short)`);
+    console.log(`                 or Card. Any platform fee is shown before you pay.`);
     console.log(`  ${c.yellow('Authorize & Publish moves the money.')} Everything before it is safe to click through.`);
     if (access === 'link') console.log(c.dim(`\nOnly people with the bounty's link can take part, so share it with them.`));
     console.log(c.dim(`\nAfter publishing: gibreview attach <taskId> --brief ${briefPath}`));
@@ -196,37 +201,52 @@ function showActions(actions: ReviewAction[], sym: string) {
 
 program
   .command('decide')
-  .description('who to pay, who to ask for a fix, who to reject (dry run unless --apply)')
+  .description('who to pay, who to ask for a fix, who to reject (dry run unless --apply or --mark-done)')
   .option('--apply', 'pay winners through escrow, post fix requests and send rejections')
+  .option('--mark-done', 'record the plan as done after you carried it out on the Gibwork website (sends nothing)')
   .option('--confirm <code>', 'the confirm code the dry run printed; it covers exactly that plan')
-  .action(async (opts: { apply?: boolean; confirm?: string }) => {
+  .action(async (opts: { apply?: boolean; markDone?: boolean; confirm?: string }) => {
     await store().withRun(program.opts().run, async (state) => {
       if (!state.collectedAt) throw new Error('No submissions collected yet. Run "gibreview collect" first.');
       const plan = planDecisions(state);
       const sym = state.task.symbol;
       const code = decisionCode(state, plan);
+      // A bounty made on the website from another wallet (or by card) can only be paid on the website.
+      const byHand = state.task.walletCanPay === false;
+      const acting = opts.confirm === code && Boolean(opts.markDone || (opts.apply && !byHand));
       const count = (k: ReviewAction['action']) => plan.actions.filter((a) => a.action === k).length;
       console.log(`${c.bold(state.brief.name)}  ${envBadge(state.environment)}  ${c.dim(`${state.brief.payout.rule}, pool ${state.task.pool} ${sym}`)}\n`);
       plan.notes.forEach((n) => console.log(`  ${c.yellow('!')} ${n}`));
       if (plan.notes.length) console.log('');
-      showActions(opts.apply && opts.confirm === code ? [] : plan.actions, sym);
+      showActions(acting ? [] : plan.actions, sym);
       if (!code) return console.log(`${plan.actions.length ? '\n' : ''}Nothing to do: every submission is decided, held or waiting for a fix.`);
 
       const pays = count('pay');
       const summary = `${c.bold(money(plan.payCents, sym))} to ${pays} winner${pays === 1 ? '' : 's'} · ${count('request-changes')} fix requests · ${count('reject')} rejections · ${count('hold')} held`;
       const leftCents = plan.poolCents - plan.paidCents - plan.payCents;
       const left = leftCents > 0 ? `${money(leftCents, sym)} of the pool left afterwards; "gibreview close" refunds it` : 'the whole pool is paid out';
-      if (!opts.apply || opts.confirm !== code) {
+      if (!acting) {
         console.log(`\n  ${summary}\n  ${c.dim(left)}`);
-        if (opts.apply) {
-          process.exitCode = 1;
-          console.log(c.red(`\n✗ ${opts.confirm ? 'That confirm code is for a different plan: submissions or amounts changed since.' : 'Applying needs the confirm code.'} Nothing was sent.`));
+        process.exitCode = opts.apply || opts.markDone ? 1 : 0;
+        if (opts.apply && byHand) {
+          console.log(c.red('\n✗ Nothing was sent: this wallet cannot pay on this bounty.'));
+        } else if (opts.apply || opts.markDone) {
+          console.log(c.red(`\n✗ ${opts.confirm ? 'That confirm code is for a different plan: submissions or amounts changed since.' : 'This needs the confirm code.'} Nothing was ${opts.apply ? 'sent' : 'recorded'}.`));
         } else {
           console.log(c.dim('\nDry run. Nothing was paid, posted or rejected.'));
         }
-        return console.log(`To apply exactly this plan: ${c.bold(`gibreview decide --apply --confirm ${code}`)}`);
+        if (!byHand) return console.log(`To apply exactly this plan: ${c.bold(`gibreview decide --apply --confirm ${code}`)}`);
+        console.log(`\nThis bounty was created by another wallet (on the website, or paid by card), and only that account can pay,`);
+        console.log(`reject or refund on it. Do these on gibwork.com, signed in as the bounty's creator:\n`);
+        websiteChecklist(plan, sym).forEach((step, i) => console.log(`  ${i + 1}. ${step}`));
+        return console.log(`\nWhen they are all done: ${c.bold(`gibreview decide --mark-done --confirm ${code}`)}`);
       }
 
+      if (opts.markDone) {
+        await recordDecisions(state, store(), plan);
+        showActions(plan.actions, sym);
+        return console.log(`\n${c.green('✓')} Recorded as done on the website. Nothing was sent to Gibwork. ${c.dim(left)}`);
+      }
       await applyDecisions(state, client(state.environment), store(), plan, log);
       showActions(plan.actions, sym);
       const failed = plan.actions.filter((a) => a.outcome === 'error').length;
@@ -255,6 +275,10 @@ program
         process.exitCode = 1;
         console.log(c.red(`\n✗ ${p.unpaidWinners.map((a) => `@${a.username} (${a.amount} ${sym})`).join(', ')} would be paid by the current plan but ${p.unpaidWinners.length === 1 ? 'is' : 'are'} not yet.`));
         return console.log(`Run ${c.bold('gibreview decide')} first, or close anyway with ${c.bold('--force')} and they are never paid.`);
+      }
+      if (state.task.walletCanPay === false) {
+        if (p.left === '0.00') return console.log('\nThe whole pool was paid out, so there is nothing to refund.');
+        return console.log(`\nThis wallet cannot refund this bounty. Refund the remaining ${p.left} ${sym} on gibwork.com, signed in as the bounty's creator.`);
       }
       if (!opts.confirm) return console.log(`\nNothing refunded. Re-run with ${c.bold('--confirm')} to close the bounty.`);
       const closed = await closeReview(state, client(state.environment), store());

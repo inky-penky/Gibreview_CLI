@@ -50,7 +50,7 @@ git clone https://github.com/inky-penky/Gibwork_Bug_Bash_CLI.git gibwork-bugbash
 cd gibwork-bugbash
 npm install          # also builds dist/ via the prepare script
 npm link             # optional, puts `bugbash` and `bugbash-mcp` on your PATH
-npm test             # 72 tests, including a full end-to-end run on the simulator
+npm test             # 73 tests, including a full end-to-end run on the simulator
 ```
 
 Without `npm link`, replace `bugbash` with `node dist/cli.js` in the commands below.
@@ -359,6 +359,8 @@ No payout may be below the bounty's minimum per approved submission (`bounty.min
 **Decide.** Eligible submissions fill the paid places in rank order. A submission that only failed fixable checks (a dead link, failing CI) gets a comment asking for the fix instead of a rejection, but only while a paid place is still open, so nobody is asked to do work that can no longer win. Duplicates, late work, the wrong repository and unused templates are rejected with the reason. Eligible work beyond the paid places is held for the creator. The confirm code is a hash of the run, the total and every action with its amount, so if anything changes between the dry run and `--apply`, the code is refused. Each action is saved as it completes, so an interrupted run resumes without paying anyone twice. It stops at an uncertain payment, and stops paying if Gibwork reports that an approval closed the bounty.
 
 **Close.** Refuses while winners in the current plan are unpaid (override with `--force`), and warns when places are still open for submissions being fixed.
+
+**Which wallet pays.** `publish`, `decide --apply` and `close` sign with the wallet in `SOLANA_PRIVATE_KEY` and spend that wallet's own USDC. Only the wallet that created a bounty can pay, reject or refund on it. A bounty made on the website is paid from the creator's Gibwork account (its wallet balance, or a card), so when `attach` finds that `SOLANA_PRIVATE_KEY` is not the creator's wallet, gibreview still collects, checks and ranks everything, but `decide` prints a checklist to do on gibwork.com as the creator (who to approve and for how much, which comment to post, which reason to give). `decide --mark-done --confirm <code>` then records those steps, so later plans neither repeat them nor misplace the winners.
 
 Try it offline with `--mock` on `publish` or `attach`:
 

@@ -7,8 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { Store } from '../state.js';
 import { createClient, type GibworkLike } from '../gibwork.js';
 import { loadBrief, validateBrief } from '../review/brief.js';
-import { attachTask, collectReview, publishBrief, type ReviewState } from '../review/engine.js';
-import { applyDecisions, closePreview, closeReview, contentHash, decisionCode, planDecisions } from '../review/decide.js';
+import { attachTask, collectReview, publishBrief, walletCanPay, type ReviewState } from '../review/engine.js';
+import { applyDecisions, closePreview, closeReview, contentHash, decisionCode, planDecisions, recordDecisions, websiteChecklist } from '../review/decide.js';
 import { mockFetch } from '../review/mockweb.js';
 
 const examples = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'examples', 'review');
@@ -148,6 +148,29 @@ test("a place below the bounty's minimum is held, and Gibwork refuses it anyway"
   assert.equal(a.ada_writes.action, 'pay');
   assert.deepEqual([a['tunde.docs'].action, a['tunde.docs'].message], ['hold', "eligible, but 15.00 USDC is below the bounty's minimum of 25.00 USDC per approved submission"]);
   await assert.rejects(client.submissions.approve(state.task.id!, a.copycat.submissionId, { amount: '5.00' }), /below the minimum of 10.00/);
+});
+
+test('a bounty another wallet created: attach notices, decide gives a website checklist, mark-done records it', async () => {
+  const { store, client, state: published } = await collected('content-brief.yaml');
+  assert.equal(published.task.walletCanPay, true, 'publish created it with this wallet');
+
+  // As seen by a different wallet: the bounty is not in its own list.
+  const stranger: GibworkLike = { ...client, tasks: { ...client.tasks, list: async () => ({ results: [], page: 1, limit: 100, total: 0, lastPage: 1 }) as never } };
+  assert.equal(await walletCanPay(stranger, published.task.id!), false);
+  const state = await attachTask(published.task.id!, published.brief, 'content-brief.yaml', 'mock', stranger, store);
+  assert.equal(state.task.walletCanPay, false);
+  await collectReview(state, stranger, store, { fetch: mockFetch });
+
+  const plan = planDecisions(state);
+  const steps = websiteChecklist(plan, 'USDC');
+  assert.equal(steps[0], "Approve @ada_writes's submission and pay 25.00 USDC (1st place)");
+  assert.ok(steps.some((s) => s.startsWith('Comment on @kemi_b\'s submission: "Thanks for your submission.')));
+  assert.ok(steps.some((s) => s.startsWith("Reject @copycat's submission with the reason:")));
+
+  await recordDecisions(state, store, plan);
+  const ada = Object.values(state.submissions).find((s) => s.username === 'ada_writes')!;
+  assert.deepEqual([ada.decision?.place, ada.decision?.amount, ada.decision?.manual, ada.decision?.txHash], [1, '25.00', true, undefined]);
+  assert.deepEqual(planDecisions(state).actions.map((a) => a.action), ['hold', 'hold'], 'nothing is planned twice');
 });
 
 test('stops paying when Gibwork reports that an approval closed the bounty', async () => {

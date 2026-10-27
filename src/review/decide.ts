@@ -186,6 +186,42 @@ export async function applyDecisions(state: ReviewState, client: GibworkLike, st
   return plan.actions;
 }
 
+/** The plan as steps to do by hand on gibwork.com, for bounties the signing wallet cannot pay on. */
+export function websiteChecklist(plan: DecisionPlan, sym: string): string[] {
+  return plan.actions
+    .filter((a) => a.action !== 'hold')
+    .map((a) =>
+      a.action === 'pay'
+        ? `Approve @${a.username}'s submission and pay ${a.amount} ${sym} (${a.message})`
+        : a.action === 'reject'
+          ? `Reject @${a.username}'s submission with the reason: "${a.message}"`
+          : `Comment on @${a.username}'s submission: "${a.message}"`,
+    );
+}
+
+/**
+ * Records a plan the creator carried out by hand on the website, so later plans neither repeat it nor
+ * misplace the winners. Nothing is sent to Gibwork.
+ */
+export async function recordDecisions(state: ReviewState, store: ReviewStore, plan: DecisionPlan): Promise<ReviewAction[]> {
+  const at = new Date().toISOString();
+  for (const a of plan.actions.filter((x) => x.action !== 'hold')) {
+    const s = state.submissions[a.submissionId];
+    if (a.action === 'pay') {
+      s.decision = { action: 'pay', at, place: a.place, amount: a.amount, manual: true };
+      s.reviewStatus = 'approved';
+    } else if (a.action === 'reject') {
+      s.decision = { action: 'reject', at, reason: a.message, manual: true };
+      s.reviewStatus = 'rejected';
+    } else {
+      s.changesRequested = { at, message: a.message, contentHash: contentHash(s.content) };
+    }
+    a.outcome = 'done';
+  }
+  await store.save(state);
+  return plan.actions;
+}
+
 // ---------- close ----------
 
 export interface ClosePreview {

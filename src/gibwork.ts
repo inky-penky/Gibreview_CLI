@@ -7,7 +7,7 @@ import { MockGibwork } from './mock.js';
 
 /** The slice of the Gibwork SDK that BugBash depends on. The mock implements the same surface. */
 export interface GibworkLike {
-  tasks: Pick<GibworkClient['tasks'], 'create' | 'get' | 'refund'>;
+  tasks: Pick<GibworkClient['tasks'], 'create' | 'get' | 'refund' | 'list'>;
   submissions: Pick<GibworkClient['submissions'], 'list' | 'approve' | 'reject'> & {
     comments: Pick<GibworkClient['submissions']['comments'], 'create'>;
   };

@@ -54,6 +54,9 @@ Give Gibwork bounty creators a CLI and MCP server that turns a pile of submissio
 - Every tier caps a bounty at **50 submissions**; Gibwork Plus makes it unlimited (the SDK's `maxSubmissions`, `standardSubmissionSlotsRemaining`). Spam and copies use up slots good work could have taken.
 - Typo on the page: "Expert contributors Guranteed".
 - **Authorize & Publish** is the step that moves money.
+- "Pay with Wallet" spends the balance of the creator's **Gibwork account wallet**, which they must have and fund first ("Deposit USDC to wallet"); "Pay with Card" is the alternative.
+
+**Who can pay on a bounty.** The SDK signs with `SOLANA_PRIVATE_KEY` and spends that wallet's own USDC; only the wallet that created a bounty can approve, reject or refund on it (`tasks.list` reports `canApprove`, `canReject`, `canRefund`). A bounty made on the website belongs to the creator's Gibwork account, so unless `SOLANA_PRIVATE_KEY` is that account's wallet, `attach` sets `walletCanPay: false` and `decide` prints a website checklist instead of paying; `decide --mark-done` records it. Open question for Gibwork: can a creator export or link their account wallet's key, or delegate approvals to another wallet?
 
 **Still unverified, must be checked on stage (section 9):** the pool amount format, whether a participant can answer a comment without submitting again, and the submission statuses after approval.
 

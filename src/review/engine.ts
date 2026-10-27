@@ -41,6 +41,8 @@ export interface ReviewDecision {
   amount?: string;
   txHash?: string;
   reason?: string;
+  /** Done by the creator on the website and recorded with decide --mark-done. */
+  manual?: boolean;
 }
 
 export interface ReviewTask {
@@ -54,6 +56,12 @@ export interface ReviewTask {
   /** Least any approved submission is paid (Gibwork's minSubmissionAmount), in the token's units. */
   minimum?: string;
   publishedBy: 'copilot' | 'attached';
+  /**
+   * Whether the signing wallet (SOLANA_PRIVATE_KEY) may pay, reject and refund on this bounty. Only the wallet
+   * that created a bounty can. false for one made on the website from another wallet or by card: decide then
+   * gives a checklist to do on the website instead of paying.
+   */
+  walletCanPay?: boolean;
   /** attach: whether the bounty text lists the brief's rules, which participants' pre-checks rely on. */
   rules?: 'match' | 'differ' | 'missing';
   txHash?: string;
@@ -140,7 +148,7 @@ export async function publishBrief(brief: Brief, briefPath: string, environment:
     createdAt: new Date().toISOString(),
     briefPath,
     brief,
-    task: { title: brief.name.slice(0, 120), deadline: p.deadline, mintAddress: brief.bounty!.mintAddress, symbol: p.symbol, pool: p.pool, minimum: p.minSubmissionAmount, publishedBy: 'copilot' },
+    task: { title: brief.name.slice(0, 120), deadline: p.deadline, mintAddress: brief.bounty!.mintAddress, symbol: p.symbol, pool: p.pool, minimum: p.minSubmissionAmount, publishedBy: 'copilot', walletCanPay: true },
     submissions: {},
   };
   await store.save(state);
@@ -171,6 +179,16 @@ export async function publishBrief(brief: Brief, briefPath: string, environment:
 
 // ---------- attach ----------
 
+/** Whether the signing wallet created this bounty and may still pay, reject and refund on it. */
+export async function walletCanPay(client: GibworkLike, taskId: string): Promise<boolean> {
+  for (let page = 1; ; page++) {
+    const res = await client.tasks.list({ page, limit: 100 });
+    const own = res.results.find((t) => t.id === taskId);
+    if (own) return own.canApprove && own.canReject && own.canRefund;
+    if (page >= res.lastPage) return false;
+  }
+}
+
 /** Reviews a bounty that already exists on Gibwork, for example one created on the website. */
 export async function attachTask(taskId: string, brief: Brief, briefPath: string, environment: Environment, client: GibworkLike, store: ReviewStore): Promise<ReviewState> {
   const t = (await client.tasks.get(taskId)) as unknown as {
@@ -194,7 +212,7 @@ export async function attachTask(taskId: string, brief: Brief, briefPath: string
     createdAt: new Date().toISOString(),
     briefPath,
     brief,
-    task: { id: t.id, title: t.title, deadline: t.deadline ?? null, mintAddress: t.asset?.mintAddress ?? '', symbol: t.asset?.symbol ?? '?', pool, ...(minimum ? { minimum } : {}), publishedBy: 'attached', rules: compareRules(brief.template, t.content ?? '') },
+    task: { id: t.id, title: t.title, deadline: t.deadline ?? null, mintAddress: t.asset?.mintAddress ?? '', symbol: t.asset?.symbol ?? '?', pool, ...(minimum ? { minimum } : {}), publishedBy: 'attached', walletCanPay: await walletCanPay(client, t.id), rules: compareRules(brief.template, t.content ?? '') },
     submissions: {},
   };
   await store.save(state);
