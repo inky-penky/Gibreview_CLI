@@ -8,8 +8,10 @@ description: |
   Open a pull request against acme/payments-sdk. It must pass CI.
 bounty:
   pool: "50.00"
+  category: Development    # the website's lowest minimum for Development was $25
+  access: verified         # Only Verified Accounts
   deadlineHours: 120
-  tags: [Development, TypeScript]
+  tags: [TypeScript]
 template:                  # replaces the preset's default fields, here to pin the repository
   - id: pr
     label: Link to your GitHub pull request

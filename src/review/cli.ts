@@ -2,14 +2,14 @@
 import { existsSync } from 'node:fs';
 import { copyFile, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { Command, Option } from 'commander';
 import { describeError } from '../engine.js';
 import { createClient, loadEnvFiles, resolveEnvironment } from '../gibwork.js';
-import { PlanError, toCents } from '../plan.js';
+import { fromCents, PlanError, toCents } from '../plan.js';
 import { Store } from '../state.js';
 import { htmlToText } from '../template.js';
-import { briefText, loadBrief, SITE_CATEGORY, totalPayoutCents, winnerSlots } from './brief.js';
+import { ACCESS_LABEL, briefText, loadBrief, minimumPayment, siteCategory, siteLowestTier, totalPayoutCents, winnerSlots } from './brief.js';
 import type { CheckContext } from './checks.js';
 import { attachTask, collectReview, publishBrief, publishPreview, rankReview, type ReviewState } from './engine.js';
 import { applyDecisions, closePreview, closeReview, decisionCode, planDecisions, type ReviewAction } from './decide.js';
@@ -83,7 +83,12 @@ program
     const env = resolveEnvironment(opts);
     const state = await attachTask(taskId, brief, resolve(opts.brief), env, client(env), store());
     console.log(`${c.green('✓')} Attached ${c.bold(state.task.title)}  ${envBadge(env)}`);
-    console.log(`  pool ${state.task.pool} ${state.task.symbol}${state.task.deadline ? ` · deadline ${state.task.deadline}` : ''} · run ${state.runId}`);
+    console.log(`  pool ${state.task.pool} ${state.task.symbol}${state.task.minimum ? ` · minimum ${state.task.minimum} per approved submission` : ''}${state.task.deadline ? ` · deadline ${state.task.deadline}` : ''} · run ${state.runId}`);
+    const below = state.task.minimum ? brief.payout.amounts.filter((a) => Number(a) < Number(state.task.minimum)) : [];
+    if (below.length) {
+      console.log(c.red(`\n! ${below.join(', ')} ${state.task.symbol} in the brief's payout is below this bounty's minimum of ${state.task.minimum}.`));
+      console.log(c.red(`  Gibwork cannot pay those places; decide will hold them. Change the payout in ${opts.brief} and attach again.`));
+    }
     if (state.task.rules === 'missing') {
       console.log(c.yellow(`\n! The bounty text does not list the rules, so participants cannot pre-check against them.`));
       console.log(c.yellow(`  Edit the bounty and paste the output of "gibreview text ${opts.brief}", or share the brief with participants.`));
@@ -96,31 +101,42 @@ program
 
 program
   .command('text')
-  .description('print a brief as bounty text to paste into "Create Bounty" on the Gibwork website')
+  .description('write a brief as bounty text for "Create Bounty" on the Gibwork website, with what to pick on each tab')
   .argument('<brief>', 'brief file (.yaml or .json)')
-  .option('--out <file>', 'write the description to a file instead of printing it')
-  .action(async (briefPath: string, opts: { out?: string }) => {
+  .option('--out <file>', 'description file (default: <brief name>.description.txt)')
+  .option('--stdout', 'print only the description, e.g. to pipe into the clipboard ("| clip" on Windows)')
+  .action(async (briefPath: string, opts: { out?: string; stdout?: boolean }) => {
     const brief = await loadBrief(briefPath);
     const text = briefText(brief);
+    if (opts.stdout) return void process.stdout.write(text + '\n');
+
+    // Only the description goes in the file, so the whole file can be pasted as it is.
+    const out = opts.out ?? `${basename(briefPath).replace(/\.(ya?ml|json)$/i, '')}.description.txt`;
+    await writeFile(out, text + '\n');
     const sym = brief.bounty?.symbol ?? 'USDC';
-    const total = (totalPayoutCents(brief) / 100).toFixed(2);
-    console.log(c.bold('Fill in "Create Bounty" on gibwork.com:\n'));
-    console.log(`  Title        ${brief.name}`);
-    console.log(`  category     ${SITE_CATEGORY[brief.preset]}${brief.preset === 'dev' ? '' : c.dim(' (or Social Media, Design or Feedback if closer)')}`);
-    console.log(`  options      ${brief.bounty?.deadlineHours ? `due ${new Date(Date.now() + brief.bounty.deadlineHours * 3_600_000).toDateString()}` : 'pick a due date'}`);
-    console.log(`  payment      Custom: ${brief.bounty?.pool ?? total} ${sym}${brief.bounty ? '' : c.dim(` (what the payout pays in total; add bounty.pool to the brief to set it)`)}`);
-    console.log(`  description  ${opts.out ? opts.out : 'everything between the lines below'}\n`);
-    if (opts.out) {
-      if (existsSync(opts.out)) throw new Error(`${opts.out} already exists`);
-      await writeFile(opts.out, text + '\n');
-      console.log(`${c.green('✓')} Wrote ${opts.out}`);
-    } else {
-      console.log(c.dim('─'.repeat(60)));
-      console.log(text);
-      console.log(c.dim('─'.repeat(60)));
+    const category = siteCategory(brief);
+    const minimum = minimumPayment(brief);
+    const pool = brief.bounty?.pool ?? fromCents(totalPayoutCents(brief));
+    const access = brief.bounty?.access ?? 'everyone';
+    const due = brief.bounty?.deadlineHours ? `due ${new Date(Date.now() + brief.bounty.deadlineHours * 3_600_000).toDateString()}` : 'pick a due date';
+
+    console.log(`${c.green('✓')} Wrote the description to ${c.bold(out)}\n`);
+    console.log(c.bold('On gibwork.com, Create Bounty:'));
+    console.log(`  title        ${brief.name}`);
+    console.log(`  category     ${category}`);
+    console.log(`  options      ${ACCESS_LABEL[access]} · ${due}`);
+    if (access === 'discord' && brief.bounty?.discord) console.log(c.dim(`               server ${brief.bounty.discord.guildName}${brief.bounty.discord.roleIds.length ? `, roles ${brief.bounty.discord.roleIds.join(', ')}` : ''}`));
+    console.log(`  payment      Custom minimum $${minimum} ${c.dim('(each approved submission is paid at least this)')}`);
+    console.log(`  description  paste everything in ${out}`);
+    console.log(`  then         Continue to Payment and fund the pool: ${c.bold(`${pool} ${sym}`)}${brief.bounty ? '' : c.dim(' (the payout total; add bounty.pool to the brief to set it)')}`);
+
+    const lowest = siteLowestTier(category);
+    if (Number(minimum) < lowest) {
+      console.log(c.yellow(`\n! The website's lowest minimum for ${category} was $${lowest} when last checked, above your smallest payout (${minimum}).`));
+      console.log(c.yellow(`  Raise the payouts, or check the payment tab: Gibwork cannot pay a winner less than the minimum.`));
     }
-    console.log(c.dim(`\nPutting the SUBMISSION block in a code block keeps its lines together and easy to copy.`));
-    console.log(c.dim(`After publishing: gibreview attach <taskId> --brief ${briefPath}`));
+    if (access === 'link') console.log(c.dim(`\nOnly people with the bounty's link can take part, so share it with them.`));
+    console.log(c.dim(`\nAfter publishing: gibreview attach <taskId> --brief ${briefPath}`));
   });
 
 program

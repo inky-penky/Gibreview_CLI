@@ -44,6 +44,22 @@ export const PRESETS = ['content', 'dev', 'custom'] as const;
  */
 export const PAYOUT_RULES = ['one-winner', 'multiple-winners', 'pool'] as const;
 export type PayoutRule = (typeof PAYOUT_RULES)[number];
+
+/** The categories on Gibwork's "Create Bounty" page. */
+export const SITE_CATEGORIES = ['Social Media', 'Development', 'Design', 'Feedback', 'Misc'] as const;
+export type SiteCategory = (typeof SITE_CATEGORIES)[number];
+
+/**
+ * Who can participate, as on the website's options tab. The SDK can set verified and discord;
+ * link ("Only to those with a Link") exists only on the website.
+ */
+export const ACCESS = ['everyone', 'verified', 'discord', 'link'] as const;
+export const ACCESS_LABEL: Record<(typeof ACCESS)[number], string> = {
+  everyone: 'Open to Everyone',
+  verified: 'Only Verified Accounts',
+  discord: 'Only Discord Members',
+  link: 'Only to those with a Link',
+};
 export type Preset = (typeof PRESETS)[number];
 
 const PRESET_FIELDS: Record<Exclude<Preset, 'custom'>, z.input<typeof FieldSchema>[]> = {
@@ -65,11 +81,24 @@ export const BriefSchema = z
     /** Only needed when the copilot publishes the bounty; omit when attaching to an existing one. */
     bounty: z
       .object({
+        /** Everything put into escrow; winners are paid out of it, and close refunds the rest. */
         pool: money,
+        /**
+         * Gibwork's "minimum payment": the least any approved submission is paid. Defaults to the smallest
+         * payout amount. On the website it is the payment tab (a tier or a custom minimum).
+         */
+        minimum: money.optional(),
+        /** The website's category. Defaults to the preset's: Development for dev, Misc otherwise. */
+        category: z.enum(SITE_CATEGORIES).optional(),
+        /** Who can participate, as on the website's options tab. */
+        access: z.enum(ACCESS).default('everyone'),
+        /** Required with access: discord. */
+        discord: z.object({ guildId: z.string().min(1), guildName: z.string().min(1), invite: z.string().url().optional(), roleIds: z.array(z.string()).default([]) }).optional(),
         mintAddress: z.string().default(USDC_MINT),
         symbol: z.string().default('USDC'),
         deadlineHours: z.number().int().min(1).max(24 * 60).optional(),
-        tags: z.array(z.string()).default(['Bounty']),
+        /** Extra tags; the category is always included. */
+        tags: z.array(z.string()).default([]),
       })
       .optional(),
     template: z.array(FieldSchema).min(1).optional(),
@@ -121,6 +150,17 @@ export const BriefSchema = z
     }
     if (b.payout.amounts.some((a) => toCents(a) === 0)) {
       ctx.addIssue({ code: 'custom', path: ['payout', 'amounts'], message: 'every payout amount must be more than 0' });
+    }
+    if (b.bounty?.minimum) {
+      const min = b.bounty.minimum;
+      b.payout.amounts.forEach((a, i) => {
+        if (toCents(a) < toCents(min)) {
+          ctx.addIssue({ code: 'custom', path: ['payout', 'amounts', i], message: `${a} is below the bounty's minimum of ${min} per approved submission; Gibwork cannot pay it` });
+        }
+      });
+    }
+    if (b.bounty?.access === 'discord' && !b.bounty.discord) {
+      ctx.addIssue({ code: 'custom', path: ['bounty', 'discord'], message: 'access: discord needs discord.guildId and discord.guildName' });
     }
     if (b.bounty && b.payout.rule === 'pool' && winnerSlots(b) === 0) {
       ctx.addIssue({ code: 'custom', path: ['payout', 'amounts'], message: `the pool of ${b.bounty.pool} cannot cover one payment of ${b.payout.amounts[0]}` });
@@ -290,8 +330,24 @@ export function briefText(b: Brief): string {
   return htmlToText(briefContent(b));
 }
 
-/** The website's bounty categories, and the one each preset fits. */
-export const SITE_CATEGORY: Record<Preset, string> = { dev: 'Development', content: 'Misc', custom: 'Misc' };
+const PRESET_CATEGORY: Record<Preset, SiteCategory> = { dev: 'Development', content: 'Misc', custom: 'Misc' };
+
+export function siteCategory(b: Pick<Brief, 'bounty' | 'preset'>): SiteCategory {
+  return b.bounty?.category ?? PRESET_CATEGORY[b.preset];
+}
+
+/** The least any approved submission is paid: the brief's minimum, or else its smallest payout amount. */
+export function minimumPayment(b: Pick<Brief, 'bounty' | 'payout'>): string {
+  return b.bounty?.minimum ?? fromCents(Math.min(...b.payout.amounts.map(toCents)));
+}
+
+/**
+ * The lowest minimum the website offered ("Anyone" tier) when checked on 2026-10-27: $25 with Development
+ * selected, $10 before a category was chosen. Only used for a warning; Gibwork has the final say.
+ */
+export function siteLowestTier(category: SiteCategory): number {
+  return category === 'Development' ? 25 : 10;
+}
 
 /**
  * Whether a bounty's text lists the same rules as the brief. Participants' pre-checks read the bounty,

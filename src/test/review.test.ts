@@ -6,7 +6,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PlanError } from '../plan.js';
 import { Store } from '../state.js';
-import { createClient } from '../gibwork.js';
+import type { CreateTaskInput } from '@gibwork/sdk';
+import { createClient, type GibworkLike } from '../gibwork.js';
 import { parseTemplate, renderTemplate } from '../template.js';
 import { briefContent, briefTemplate, loadBrief, validateBrief, winnerSlots } from '../review/brief.js';
 import { checkFields, deadlineCheck, findDuplicates, similarity, type CheckContext, type FetchLike } from '../review/checks.js';
@@ -47,6 +48,12 @@ test('brief validation explains what is wrong', () => {
   assert.match(String(issues({ ...base, preset: 'content', payout: { rule: 'one-winner', amounts: ['5'], maxWinners: 3 } })), /maxWinners only applies to pool/);
   assert.match(String(issues({ ...base, preset: 'content', bounty: { pool: '4' }, payout: { rule: 'pool', amounts: ['5'] } })), /cannot cover one payment/);
   assert.match(String(issues({ ...base, preset: 'content', payout: { rule: 'multiple-winners', amounts: ['5', '0'] } })), /more than 0/);
+  assert.match(
+    String(issues({ ...base, preset: 'content', bounty: { pool: '60', minimum: '25' }, payout: { rule: 'multiple-winners', amounts: ['30', '20', '10'] } })),
+    /20 is below the bounty's minimum of 25 per approved submission; Gibwork cannot pay it/,
+  );
+  assert.match(String(issues({ ...base, preset: 'content', bounty: { pool: '10', access: 'discord' } })), /access: discord needs discord.guildId/);
+  assert.match(String(issues({ ...base, preset: 'content', bounty: { pool: '10', category: 'Writing' } })), /bounty.category/);
 });
 
 test('a pool payout pays as many submissions as the pool covers, unless capped', () => {
@@ -211,4 +218,20 @@ test('a brief without a bounty section cannot be published', async () => {
   const path = join(dir, 'b.yaml');
   await writeFile(path, 'name: No money\npreset: content\ndescription: Just reviewing an existing bounty.\npayout: { rule: one-winner, amounts: ["10"] }\n');
   await assert.rejects(publishBrief(await loadBrief(path), path, 'mock', client, store), /no bounty section/);
+});
+
+test('publish sends the minimum, category and who can participate', async () => {
+  const { store } = await mockReview('dev-brief.yaml');
+  const sent: CreateTaskInput[] = [];
+  const recording = { tasks: { create: async (input: CreateTaskInput) => (sent.push(input), { taskId: 't1', txHash: 'tx' }) } } as unknown as GibworkLike;
+  const b = await loadBrief(join(examples, 'dev-brief.yaml'));
+  await publishBrief(b, 'dev-brief.yaml', 'mock', recording, store);
+  assert.deepEqual([sent[0].minSubmissionAmount, sent[0].tags, sent[0].allowOnlyVerifiedSubmissions], ['50.00', ['Development', 'TypeScript'], true]);
+
+  const discord = validateBrief({ ...base, preset: 'content', bounty: { pool: '10', access: 'discord', discord: { guildId: 'g1', guildName: 'Acme' } } });
+  await publishBrief(discord, 'b.yaml', 'mock', recording, store);
+  assert.deepEqual([sent[1].allowOnlyDiscordGuildSubmissions, sent[1].requiredDiscordGuildId, sent[1].minSubmissionAmount, sent[1].tags], [true, 'g1', '10.00', ['Misc']]);
+
+  const linkOnly = validateBrief({ ...base, preset: 'content', bounty: { pool: '10', access: 'link' } });
+  await assert.rejects(publishBrief(linkOnly, 'b.yaml', 'mock', recording, store), /can only be set on the Gibwork website/);
 });

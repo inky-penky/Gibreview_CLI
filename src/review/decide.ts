@@ -88,6 +88,10 @@ export function planDecisions(state: ReviewState, now = new Date()): DecisionPla
       }
       const amount = placeAmount(brief, place);
       const left = poolCents - paidCents - payCents;
+      if (state.task.minimum && toCents(amount) < toCents(state.task.minimum)) {
+        actions.push({ ...base, action: 'hold', message: `eligible, but ${amount} ${sym} is below the bounty's minimum of ${state.task.minimum} ${sym} per approved submission` });
+        continue;
+      }
       if (toCents(amount) > left) {
         actions.push({ ...base, action: 'hold', message: `eligible, but ${amount} ${sym} is more than the ${fromCents(left)} ${sym} left in the pool` });
         continue;

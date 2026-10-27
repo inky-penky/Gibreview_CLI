@@ -5,7 +5,7 @@ import type { GibworkLike } from '../gibwork.js';
 import { fromCents, PlanError, toCents } from '../plan.js';
 import type { Environment, ReviewStatus, Store } from '../state.js';
 import { missingFields, parseTemplate } from '../template.js';
-import { briefContent, briefTemplate, compareRules, totalPayoutCents, winnerSlots, type Brief } from './brief.js';
+import { briefContent, briefTemplate, compareRules, minimumPayment, siteCategory, totalPayoutCents, winnerSlots, type Brief } from './brief.js';
 import { checkFields, deadlineCheck, findDuplicates, type CheckContext, type CheckResult, type FieldValue } from './checks.js';
 
 export type ReviewVerdict = 'eligible' | 'needs-changes' | 'disqualified' | 'invalid';
@@ -51,6 +51,8 @@ export interface ReviewTask {
   symbol: string;
   /** Escrow pool as a decimal string in the token's units. */
   pool: string;
+  /** Least any approved submission is paid (Gibwork's minSubmissionAmount), in the token's units. */
+  minimum?: string;
   publishedBy: 'copilot' | 'attached';
   /** attach: whether the bounty text lists the brief's rules, which participants' pre-checks rely on. */
   rules?: 'match' | 'differ' | 'missing';
@@ -93,14 +95,34 @@ export interface PublishPreview {
 
 export function publishPreview(brief: Brief): PublishPreview {
   if (!brief.bounty) throw new PlanError('This brief has no bounty section. Add bounty.pool to publish it, or attach it to an existing bounty instead.');
-  const minCents = Math.min(...brief.payout.amounts.map(toCents));
+  if (brief.bounty.access === 'link') {
+    throw new PlanError('"Only to those with a Link" can only be set on the Gibwork website.', [
+      `Create the bounty there with the text from "gibreview text", then "gibreview attach <taskId> --brief <file>".`,
+    ]);
+  }
   return {
     pool: brief.bounty.pool,
     symbol: brief.bounty.symbol,
     maxPayout: fromCents(totalPayoutCents(brief)),
-    minSubmissionAmount: fromCents(minCents),
+    minSubmissionAmount: minimumPayment(brief),
     deadline: brief.bounty.deadlineHours ? new Date(Date.now() + brief.bounty.deadlineHours * 3_600_000).toISOString() : null,
   };
+}
+
+/** The SDK fields for the website's "who can participate" options. */
+function accessInput(brief: Brief): Partial<CreateTaskInput> {
+  const b = brief.bounty!;
+  if (b.access === 'verified') return { allowOnlyVerifiedSubmissions: true };
+  if (b.access === 'discord' && b.discord) {
+    return {
+      allowOnlyDiscordGuildSubmissions: true,
+      requiredDiscordGuildId: b.discord.guildId,
+      requiredDiscordGuildName: b.discord.guildName,
+      discordGuildInvitationUrl: b.discord.invite ?? null,
+      requiredDiscordRoleIds: b.discord.roleIds,
+    };
+  }
+  return {};
 }
 
 /**
@@ -118,17 +140,18 @@ export async function publishBrief(brief: Brief, briefPath: string, environment:
     createdAt: new Date().toISOString(),
     briefPath,
     brief,
-    task: { title: brief.name.slice(0, 120), deadline: p.deadline, mintAddress: brief.bounty!.mintAddress, symbol: p.symbol, pool: p.pool, publishedBy: 'copilot' },
+    task: { title: brief.name.slice(0, 120), deadline: p.deadline, mintAddress: brief.bounty!.mintAddress, symbol: p.symbol, pool: p.pool, minimum: p.minSubmissionAmount, publishedBy: 'copilot' },
     submissions: {},
   };
   await store.save(state);
   const input: CreateTaskInput = {
     title: state.task.title,
     content: briefContent(brief, runId),
-    tags: brief.bounty!.tags,
+    tags: [...new Set([siteCategory(brief), ...brief.bounty!.tags])],
     payment: { mintAddress: brief.bounty!.mintAddress, amount: p.pool },
     minSubmissionAmount: p.minSubmissionAmount,
     ...(p.deadline ? { deadline: p.deadline } : {}),
+    ...accessInput(brief),
   };
   try {
     const created = await client.tasks.create(input);
@@ -155,11 +178,14 @@ export async function attachTask(taskId: string, brief: Brief, briefPath: string
     title: string;
     content?: string;
     deadline?: string | null;
+    minSubmissionAmount?: number | string | null;
     asset?: { mintAddress: string; symbol: string; amount: number | string; decimals: number };
   };
   const decimals = t.asset?.decimals ?? 6;
   // Task details report the pool in base units, like discovery. Two decimals is enough for display.
-  const pool = t.asset ? fromCents(Math.round((Number(t.asset.amount) / 10 ** decimals) * 100)) : '0.00';
+  const units = (v: number | string) => fromCents(Math.round((Number(v) / 10 ** decimals) * 100));
+  const pool = t.asset ? units(t.asset.amount) : '0.00';
+  const minimum = t.minSubmissionAmount != null ? units(t.minSubmissionAmount) : undefined;
   const state: ReviewState = {
     version: 1,
     kind: 'review',
@@ -168,7 +194,7 @@ export async function attachTask(taskId: string, brief: Brief, briefPath: string
     createdAt: new Date().toISOString(),
     briefPath,
     brief,
-    task: { id: t.id, title: t.title, deadline: t.deadline ?? null, mintAddress: t.asset?.mintAddress ?? '', symbol: t.asset?.symbol ?? '?', pool, publishedBy: 'attached', rules: compareRules(brief.template, t.content ?? '') },
+    task: { id: t.id, title: t.title, deadline: t.deadline ?? null, mintAddress: t.asset?.mintAddress ?? '', symbol: t.asset?.symbol ?? '?', pool, ...(minimum ? { minimum } : {}), publishedBy: 'attached', rules: compareRules(brief.template, t.content ?? '') },
     submissions: {},
   };
   await store.save(state);

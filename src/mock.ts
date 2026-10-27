@@ -184,6 +184,7 @@ export class MockGibwork {
       if (s.status !== 'OPEN') throw new Error(`mock: submission ${submissionId} already ${s.status}`);
       const t = l.tasks.find((x) => x.id === taskId)!;
       if (t.refunded) throw new Error(`mock: task ${taskId} is closed`);
+      if (Number(input.amount) < Number(t.perTester)) throw new Error(`mock: ${input.amount} is below the minimum of ${t.perTester} per approved submission`);
       const paidCents = l.submissions.filter((x) => x.taskId === taskId && x.paid).reduce((n, x) => n + Math.round(Number(x.paid) * 100), 0);
       if (paidCents + Math.round(Number(input.amount) * 100) > Math.round(Number(t.amount) * 100)) throw new Error('mock: approval is more than the escrow has left');
       s.status = 'CLAIMED';

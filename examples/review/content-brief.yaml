@@ -5,8 +5,11 @@ description: |
   Write a beginner-friendly guide to our three payments endpoints: create a payment, check its status and refund it.
 
   Publish it on your own blog or a developer site and include a full request and response example for every call.
-bounty:                    # only used by "gibreview publish"; ignored by "gibreview attach"
-  pool: "30.00"
+bounty:                    # used by "publish" and "text"; "attach" reads these from Gibwork instead
+  pool: "60.00"            # everything put into escrow
+  minimum: "10.00"         # payment tab: the least any approved submission is paid (defaults to the smallest payout)
+  category: Misc           # Social Media | Development | Design | Feedback | Misc
+  access: everyone         # everyone | verified | discord | link (link is website-only)
   deadlineHours: 72
   tags: [Docs, Writing]
 criteria:
@@ -15,7 +18,7 @@ criteria:
   - { text: Clear for someone new to payments, weight: 20 }
 payout:
   rule: multiple-winners   # one-winner | multiple-winners | pool
-  amounts: ["15.00", "10.00", "5.00"]
+  amounts: ["30.00", "20.00", "10.00"]   # 1st, 2nd, 3rd; none below the minimum
 review:
   duplicates: 0.85         # a later submission this similar to an earlier one is a copy
   order: first-come        # tie-breaker: first-come or reputation
