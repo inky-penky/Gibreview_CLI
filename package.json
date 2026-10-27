@@ -24,11 +24,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/inky-penky/Gibwork_Bug_Bash_CLI.git"
+    "url": "git+https://github.com/inky-penky/Gibreview_CLI.git"
   },
-  "homepage": "https://github.com/inky-penky/Gibwork_Bug_Bash_CLI#readme",
+  "homepage": "https://github.com/inky-penky/Gibreview_CLI#readme",
   "bugs": {
-    "url": "https://github.com/inky-penky/Gibwork_Bug_Bash_CLI/issues"
+    "url": "https://github.com/inky-penky/Gibreview_CLI/issues"
   },
   "dependencies": {
     "@gibwork/sdk": "^0.2.0",

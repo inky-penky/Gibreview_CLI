@@ -56,7 +56,7 @@ Either way, gibreview never holds funds. Gibwork's escrow does.
 Requires **Node.js 22+** (the Gibwork SDK requires it).
 
 ```bash
-git clone https://github.com/inky-penky/Gibwork_Bug_Bash_CLI.git gibreview
+git clone https://github.com/inky-penky/Gibreview_CLI.git gibreview
 cd gibreview
 npm install          # also builds dist/
 npm link             # optional: puts gibreview and gibreview-mcp on your PATH

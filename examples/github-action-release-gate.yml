@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4   # .gibreview/ run state must be committed or restored from an artifact
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - run: npm install -g github:YOUR_GITHUB_USER/gibreview
+      - run: npm install -g github:inky-penky/Gibreview_CLI
       - run: gibreview qa collect
       - if: ${{ inputs.pay }}
         run: gibreview qa triage --apply
