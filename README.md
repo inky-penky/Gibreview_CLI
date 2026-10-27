@@ -1,337 +1,247 @@
-# Gibwork BugBash
+# gibreview
 
-**Crowdsourced manual QA from your terminal.** Turn a test plan into paid Gibwork bounties, let real people run your test cases on real phones and browsers, then collect, verify and pay their results and get a release-gate report your CI understands.
+**Review Gibwork bounty submissions from your terminal or your AI agent.** gibreview checks every submission against the bounty's rules, ranks them into a shortlist with a reason for every verdict, and turns the ranking into decisions: who is paid and how much, who is asked to fix their work, and who is rejected and why. Participants get a free pre-check before they submit.
 
-Built for the Gibwork Developer Hackathon. No web app, no dashboard. A CLI and an MCP server built on the official **`@gibwork/sdk`**.
+Built for the Gibwork Developer Hackathon on the official **`@gibwork/sdk`**. A CLI and an MCP server, no web app.
 
 ```
-testplan.yaml ──► bugbash plan ──► bugbash publish ──► Gibwork bounties ──► testers on real devices
-                                                                                     │
-  CI / agent ◄── exit code + junit.xml ◄── bugbash report ◄── bugbash triage ◄── bugbash collect
-                                                         (pays complete work, rejects the rest)
+brief.yaml ─► gibreview text ─► you create and pay for the bounty on gibwork.com
+                                                │
+                       participants: gibreview check (free pre-check) ─► submit
+                                                │
+  gibreview attach ─► collect ─► score (optional AI) ─► rank ─► decide
+                                                                  │
+                    approve, comment and reject on gibwork.com ◄──┘  (a checklist, then decide --mark-done)
 ```
 
 ## The problem
 
-Automated tests don't catch everything. The bugs that hurt users most often appear only on a budget Android phone, an older iPhone, a slow network, or a real person's inbox. Large companies pay for device labs and in-house manual testers. Small teams and solo founders usually skip manual regression, ship, and wait for users to report problems.
+A popular bounty brings in dozens of submissions, and a standard bounty only takes 50. Some are good, some are spam, some copy an earlier entry, some link to a page that doesn't exist, some arrive after the deadline. The creator reads them all by hand, decides who wins, and writes to the people who nearly made it. Participants find out what was wrong only when they are rejected, after the work is done.
 
-The coordination is the hard part, not the testing itself. Someone has to find testers, explain the cases, chase results, sort real reports from low-effort ones, pay people, and turn a pile of messages into a release decision.
+## What gibreview does
 
-## What BugBash does
+**For creators**
 
-0. **Start from what you have.** Draft cases from a feature URL with `generate`, or bring existing cases from Excel, Google Sheets or TestRail with `import`. See [Generate a test plan from a URL](#generate-a-test-plan-from-a-url) and [Use test cases from a spreadsheet](#use-test-cases-from-a-spreadsheet-csv).
-1. **Plan.** Validates a YAML test plan (cases, steps, expected results, priorities, device classes) and splits it into focused bounties, one per device class and chunk of cases, so each job takes about 20 minutes.
-2. **Publish.** Creates and funds each bounty through `gibwork.tasks.create`. Every bounty includes the build link, the cases and a strict `BUGBASH RESULT` template for testers to paste back.
-3. **Collect.** Pulls submissions with `gibwork.submissions.list` and parses each one against the exact case ids that bounty asked for. Each submission is classified as *valid*, *incomplete* (missing cases, a FAIL without evidence, no device) or *invalid* (no result block).
-4. **Triage.** Pays complete, evidenced work first come, first served, up to the number of tester slots, using `gibwork.submissions.approve`. Rejects the rest with `gibwork.submissions.reject` and a reason the tester can act on. This is a dry run by default.
-5. **Report.** Builds a case × device matrix. Two testers reproducing a failure gives **FAIL**. Testers disagreeing gives **DISPUTED** (likely flaky). The tool then applies your gate rules and writes `report.md`, `results.csv`, `junit.xml` and `summary.json`. The exit code is the verdict, so a pipeline can block a release on it.
-6. **Refund.** Returns unspent escrow with `gibwork.tasks.refund` when the run is over.
+1. **Write a brief.** One short YAML file says what to submit, the checks each submission must pass, the judging criteria and how the bounty pays. Presets cover writing (`content`) and code (`dev`) bounties.
+2. **Create the bounty on gibwork.com.** `gibreview text` writes the description to paste and tells you what to pick on each tab of "Create Bounty". You pay from your Gibwork account wallet, as usual.
+3. **Review.** `attach` connects to the bounty, read-only. `collect` checks every submission: the link opens, it's on an allowed site, the length is right, the pull request is on the right repo, still open or merged, and passing CI. It also finds copies and late work. `rank` puts eligible work first, with a reason for every verdict.
+4. **Score (optional).** `score` has Claude rate each eligible submission, and the page it links to, against your criteria, with a note per criterion. The scores are advisory.
+5. **Decide.** `decide` turns the ranking into a plan that follows your payout rule. Gibwork pays only from your account wallet, so you carry out the plan on gibwork.com: gibreview gives you a checklist of who to approve and for how much, the comment to post, and the reason to give. `decide --mark-done` records it, so later rounds don't repeat it.
 
-All of this is also available to AI agents through an **MCP server**. You can tell your coding agent "run the checkout regression on real phones and tell me if v2.3.0 is safe to ship", and it plans, asks you to approve the budget, publishes, collects, pays and reports.
+**For participants**
 
-## Why it's a new Gibwork use case
+- **Check before you submit.** `gibreview check <taskId> draft.txt` runs the creator's checks on a draft, for free. A submission that only fails a fixable check, like a dead link or failing CI, gets a comment asking for the fix instead of a rejection.
 
-Most Gibwork tooling helps people find bounties or write them one at a time. BugBash treats Gibwork as a **programmable human test runner**. A structured test plan goes in, many small paid jobs are fanned out, and machine-readable results come back. Those results plug into the same places automated test results already go, such as JUnit reports, CI checks and agent workflows. It also shows why on-chain payouts matter here. Testers anywhere, including the many skilled testers in Nigeria and across Africa who are hard to pay through traditional platforms, get paid in USDC within minutes of a verified result.
+**For AI agents**
 
-## Gibwork toolset used
+- **MCP tools for the whole flow.** An MCP server lets a creator's agent run everything ("review my API-docs bounty and tell me who to pay"), and lets a participant's agent pre-check a draft.
 
-| Toolset | How BugBash uses it |
-| --- | --- |
-| **SDK** `@gibwork/sdk` 0.2.x (core) | `tasks.create`, `tasks.list`, `tasks.listAvailable`, `tasks.refund`, `submissions.list`, `submissions.approve`, `submissions.reject`, plus the Node keypair signer. Typed error handling for `GibworkApiError`, `GibworkAmbiguousSubmitError` and rate limits. |
-| **MCP** | BugBash ships its own MCP server (`bugbash-mcp`) with 9 tools that wrap the SDK workflow for agents, with spend guards. |
-| **CLI** | `bugbash` is a terminal-first CLI on top of the SDK. |
+**QA preset**
+
+- **Crowdsourced manual QA.** `gibreview qa` turns a test plan into tester bounties on real phones and browsers, and the results into a release-gate report your CI understands. See [QA preset](#qa-preset-gibreview-qa).
+
+## How it fits with Gibwork
+
+Gibwork creates a Solana wallet for every account, and the website pays only from that wallet. The account wallet can't be exported or linked to another wallet, so nothing outside gibwork.com can pay on a bounty made there. gibreview works with that:
+
+| Bounty created | Paid from | Who pays the winners |
+| --- | --- | --- |
+| On **gibwork.com** (the usual way) | Your Gibwork account wallet, or a card | **You, on gibwork.com**, following gibreview's checklist |
+| From code, with `gibreview publish` | The USDC in the wallet in `SOLANA_PRIVATE_KEY` | gibreview, after you approve the exact total with a confirm code |
+
+Either way, gibreview never holds funds. Gibwork's escrow does.
 
 ## Install
 
 Requires **Node.js 22+** (the Gibwork SDK requires it).
 
 ```bash
-git clone https://github.com/inky-penky/Gibwork_Bug_Bash_CLI.git gibwork-bugbash
-cd gibwork-bugbash
-npm install          # also builds dist/ via the prepare script
-npm link             # optional, puts `bugbash` and `bugbash-mcp` on your PATH
-npm test             # 73 tests, including a full end-to-end run on the simulator
+git clone https://github.com/inky-penky/Gibwork_Bug_Bash_CLI.git gibreview
+cd gibreview
+npm install          # also builds dist/
+npm link             # optional: puts gibreview and gibreview-mcp on your PATH
+npm test             # 77 tests, all on the offline simulator
 ```
 
-Without `npm link`, replace `bugbash` with `node dist/cli.js` in the commands below.
+Without `npm link`, use `node dist/review/cli.js` in place of `gibreview`.
 
-## Environment variables
+## Try it in a minute (no wallet needed)
 
-Copy `.env.example` to `.env` (or `.env.local`). Both are loaded automatically from the current directory and are gitignored. Values in `.env.local` win over `.env`, and variables already set in your shell win over both.
-
-| Variable | Required | Meaning |
-| --- | --- | --- |
-| `SOLANA_PRIVATE_KEY` | for stage/production | Wallet that funds bounties and pays testers. Base58 secret key or a JSON byte array. Never commit it. |
-| `GIBWORK_ENV` | no | `stage` (default) or `production`. `--prod` on `plan` does the same. |
-| `BUGBASH_MOCK` | no | `1` runs against the offline simulator. Same as `--mock` on `plan`. |
-| `ANTHROPIC_API_KEY` | no | Turns on the AI writer for `bugbash generate` |
-| `BUGBASH_DIR` | MCP only | Where run state lives. The default is `./.bugbash`. |
-| `BUGBASH_MCP_ALLOW_PRODUCTION` | MCP only | `1` lets agents spend on production. Agents still need the confirm code for each spend. |
-| `BUGBASH_MCP_MAX_BUDGET` | MCP only | Most escrow any one run may fund, for example `50`. Agents cannot exceed it. |
-
-## Try it in 60 seconds (no wallet needed)
-
-The `--mock` flag swaps the SDK for a local simulator with the same method shapes. It invents a small crowd of testers for every bounty. Some do good work, one reproduces a real bug, one disagrees on a flaky case, one skips a case and one sends spam. You can review the whole loop without funds.
+`--mock` swaps Gibwork for a local simulator with the same method shapes. It fills each bounty with realistic submissions: good work, a dead link, a summary too short, a copy, a late entry and spam.
 
 ```bash
-npm run demo
-```
-
-Or step by step:
-
-```bash
-mkdir /tmp/qa && cd /tmp/qa
-bugbash init testplan.yaml
-bugbash plan testplan.yaml --mock
-bugbash publish --confirm
-bugbash collect
-bugbash triage            # dry run, shows who gets paid and why
-bugbash triage --apply
-bugbash report            # exits 1, the coupon bug blocks the release
-```
-
-## Real run on Gibwork stage
-
-```bash
-cp .env.example .env      # put a stage wallet key in SOLANA_PRIVATE_KEY
-bugbash doctor            # free read-only checks for key, API reachability and wallet auth
-bugbash plan testplan.yaml
-bugbash publish           # shows the cost, moves nothing
-bugbash publish --confirm # funds and publishes the bounties
-# … testers submit …
-bugbash collect && bugbash triage && bugbash triage --apply
-bugbash report
-bugbash refund --confirm  # return unspent escrow
-```
-
-Use `--prod` on `plan` (or `GIBWORK_ENV=production`) to target production. The environment is fixed per run, so a run's task ids never get mixed across environments.
-
-## Generate a test plan from a URL
-
-Writing test cases is often the slowest part. `bugbash generate` reads a feature page and drafts the plan for you.
-
-```bash
-bugbash generate https://staging.acme-shop.example/checkout --out testplan.yaml
+gibreview publish examples/review/content-brief.yaml --mock --confirm
+gibreview collect
+gibreview rank
+gibreview decide
 ```
 
 ```
-Read Checkout · Acme Shop (via browser)
-  2 forms, 9 fields, 1 actions, 4 nav links
+  ★ #1  eligible       @ada_writes      2 checks passed
+  ★ #2  eligible       @tunde.docs      2 checks passed
+     –  needs changes  @kemi_b          https://dev.to/kemi/payments-guide-404 returns 404 (page not found)
+     –  needs changes  @shorty          summary has 6 words, needs at least 30
+     –  disqualified   @copycat         86% the same as @ada_writes's earlier submission
+     –  disqualified   @late_lara       sent …, after the deadline …
+     –  invalid        @quickcash99     no SUBMISSION block: the template was not used
 
-12 draft cases by the rule-based writer
+  PAY     @ada_writes      25.00 USDC  1st place
+  PAY     @tunde.docs      15.00 USDC  2nd place
+  CHANGES @kemi_b          Thanks for your submission. It can't be accepted yet: … returns 404 (page not found). Please fix this and reply here when it's done.
+  CHANGES @shorty          Thanks for your submission. It can't be accepted yet: summary has 6 words, needs at least 30. …
+  REJECT  @copycat         Not accepted: 86% the same as @ada_writes's earlier submission.
+  REJECT  @late_lara       Not accepted: sent …, after the deadline ….
+  REJECT  @quickcash99     Not accepted: the submission does not use the SUBMISSION block from the bounty description.
 
-  TC-01  high    Checkout · Acme Shop: page loads correctly
-  TC-02  high    Delivery and payment: submit with valid details  • needs review
-  TC-03  high    Delivery and payment: required fields are enforced
-  TC-04  medium  Delivery and payment: invalid email is rejected
-  TC-05  medium  Delivery and payment: invalid phone number is rejected
-  TC-06  medium  Delivery and payment: Quantity limits are enforced
-  TC-07  medium  Delivery and payment: invalid coupon code is handled
-  TC-08  medium  Delivery and payment: I agree to the terms must be ticked
-  TC-09  high    Delivery and payment: double tap does not submit twice  • needs review
-  …
+  40.00 USDC to 2 winners · 2 fix requests · 3 rejections · 0 held
 ```
 
-**How it works**
+## Review a bounty you create on gibwork.com
 
-1. **Read the page.** If Playwright is installed, the page is rendered in a headless browser, so JavaScript apps (React, Vue, Next.js) are read fully. Otherwise it falls back to a plain fetch, which works for server-rendered pages. `--html page.html` reads a saved file instead.
-2. **Extract what can be tested.** This covers forms, field labels and types, required fields, length and number limits, patterns, select and radio options, buttons outside forms and navigation links. Cookie banners and close buttons are ignored.
-3. **Write cases.**
-   - The **rule-based writer** is the default and needs no API key. It writes the happy path, required-field checks and per-field validation (email, phone, number range, length, required checkbox, invalid coupon). For payment-like forms it adds a double-submit check. It also adds mobile layout, navigation and keyboard-only cases, each with concrete inputs taken from the page's own constraints.
-   - The **AI writer** is used when `ANTHROPIC_API_KEY` is set. It sends the page model and the rule-based baseline to Claude and gets back sharper, more realistic cases. Add `--describe "Coupon SAVE10 gives 10% off orders over ₦20,000"` to give it business rules the page can't show. Its output is schema-checked, and if anything goes wrong it falls back to the rule-based cases.
-4. **Save as a draft.** The YAML is marked `draft: true`, and cases where the expected result needs product knowledge carry a `reviewNote`. `bugbash plan` refuses a draft and lists the open review notes, so nobody pays testers to run unreviewed, machine-written cases.
-
-| Option | Meaning |
-| --- | --- |
-| `-o, --out <file>` | Output file (default `testplan.yaml`). Add `--force` to overwrite. |
-| `--describe <text>` | What the feature should do, for the AI writer |
-| `--max-cases <n>` | Cap on cases (default 12). High-priority cases are kept first. |
-| `--render auto\|browser\|fetch` | How to read the page. `auto` uses Playwright if installed. |
-| `--cookies <value>` | For pages behind a login. Either a cookie header (`session=abc; csrftoken=xyz`) or a Playwright storage-state JSON file. |
-| `--html <file>` | Read a saved HTML file instead of the URL |
-| `--ai` / `--no-ai` | Require or disable the AI writer |
-| `--name <name>` | Plan name |
-
-To enable browser rendering, run `npm i playwright && npx playwright install chromium`. For the AI writer, set `ANTHROPIC_API_KEY`. `BUGBASH_AI_MODEL` overrides the default model, `claude-sonnet-5-5`.
-
-A full generated draft from the sample checkout page is in [`examples/sample-output/generated-testplan.yaml`](examples/sample-output/generated-testplan.yaml).
-
-**Limits.** The generator only sees the page, not the intent. It knows there is a coupon field, but not what discount a code should give. Multi-step flows need one URL per step, or `--describe` with the AI writer. Treat the output as a strong first draft for a person to finish.
-
-## Use test cases from a spreadsheet (CSV)
-
-Most teams already keep test cases in Excel, Google Sheets, TestRail, Zephyr, Xray or Qase. BugBash reads their CSV or TSV exports directly.
-
-```bash
-bugbash import cases.csv --url https://staging.acme-shop.example --out testplan.yaml
-```
-
-```
-Read cases.csv (comma separated)
-  Column mapping
-    id             ← ID
-    title          ← Title
-    priority       ← Priority
-    preconditions  ← Preconditions
-    steps          ← Steps
-    expected       ← Expected Result
-    devices        ← Platform
-  Ignored columns Assignee, Status
-
-4 cases imported, 2 high, 1 medium, 1 low
-```
-
-**What it handles**
-
-- **Column names matched loosely.** `ID`, `Test Case ID` and `Key` all map to the id. `Title`, `Summary` and `Test Scenario` map to the title. `Steps`, `Test Steps` and `Steps (Step)` map to the steps. `Expected Result` and `Steps (Expected Result)` map to the expected result. `Severity` works as priority, and `Platform` or `Browser` work as devices. Other columns are ignored and listed.
-- **Priorities from any tool.** P1/P2/P3, Critical/Major/Minor, Highest to Lowest, and TestRail's "4 - Must Test" to "1 - Low" are all normalised to high, medium or low. Anything unrecognised becomes medium with a warning.
-- **Steps in any shape.** One step per line inside a cell, inline numbering like `1. Log in 2. Tap Transfer`, bullets, or `Step 1:` prefixes all work.
-- **One row per step.** In TestRail and Xray exports, continuation rows with no id or title are merged into the case above. Per-step expected results are combined in order.
-- **Excel quirks.** Semicolon-separated files (Excel in many locales), tab-separated files, a UTF-8 BOM, quoted multi-line cells and CRLF line endings are all handled.
-- **Devices.** "Mobile", "Android, iOS", "Desktop" and "All" map to the plan's devices. Unknown values run on every device, with a warning.
-- **Clear errors with row numbers,** using the row numbers you see in the spreadsheet. For example "Row 4 (A3): no expected result" or "Row 3: duplicate id A1 (also on row 2)". Missing ids are generated as TC-01, TC-02 and so on.
-
-**Keep the spreadsheet as the source of truth.** With `--link`, the plan stores `casesFile: cases.csv` instead of copying the cases in. Every `bugbash plan` then re-reads the CSV, so your QA team keeps editing the sheet as usual. You can also add `casesFile:` to any plan by hand, and its cases are added after any inline ones.
-
-| Option | Meaning |
-| --- | --- |
-| `--url <url>` | Build or staging URL testers should open (required) |
-| `-o, --out <file>` | Output plan (default `testplan.yaml`). Add `--force` to overwrite. |
-| `--link` | Reference the CSV instead of copying cases in |
-| `--name`, `--release` | Plan name and release label |
-| `--per-tester <amount>`, `--testers <n>` | Reward per accepted tester and testers per bounty |
-
-Sample exports to try are in [`examples/csv/`](examples/csv/): a Google Sheets file, a TestRail one-row-per-step export and an Excel semicolon file with a BOM. For `.xlsx` files, use **File > Save as > CSV UTF-8** first.
-
-## Commands
-
-| Command | What it does | Moves money |
-| --- | --- | --- |
-| `bugbash generate <url> [options]` | Drafts a test plan from a feature page | no |
-| `bugbash import <csv> --url <url> [options]` | Turns a CSV/TSV of test cases into a plan | no |
-| `bugbash init [file]` | Writes the sample plan | no |
-| `bugbash plan <file> [--mock] [--prod] [--show <batch>]` | Validates, batches, prices and prints a bounty preview | no |
-| `bugbash publish [--confirm] [--batch <id>]` | Creates and funds bounties. Skips batches that are already published. | with `--confirm` |
-| `bugbash status` | Per-bounty state, submissions and paid slots | no |
-| `bugbash collect` | Fetches and parses submissions (all pages) | no |
-| `bugbash triage [--apply]` | Plans or executes payouts and rejections | with `--apply` |
-| `bugbash report [--out dir] [--format md,csv,junit,json] [--no-gate]` | Writes reports and sets the exit code | no |
-| `bugbash refund [--confirm]` | Refunds unspent escrow on every bounty | with `--confirm` |
-| `bugbash show <submissionId>` | Shows the raw submission and how it was parsed | no |
-| `bugbash doctor [--prod]` | Checks Node version, wallet and Gibwork connectivity | no |
-
-Global options are `--dir <path>` for the state directory and `--run <id>` to work on an older run.
-
-**Report exit codes** are `0` when the release passes, `1` when it is blocked by a failing or disputed case on a `failOn` priority, and `2` when a `requireCoverageOn` case has no usable result on some device.
-
-## Test plan format
-
-See [`examples/checkout-regression.yaml`](examples/checkout-regression.yaml) for a full example. The essentials are below.
-
-```yaml
-name: Acme Shop checkout regression
-release: v2.3.0
-build:
-  url: https://staging.acme-shop.example
-  notes: Test login and test card details for testers
-reward:
-  perTester: "2.00"        # USDC per accepted tester
-  testersPerBatch: 2       # independent testers per bounty
-  # mintAddress: ...       # defaults to USDC
-batchSize: 5               # cases per bounty
-deadlineHours: 48
-gate:
-  failOn: [high]
-  requireCoverageOn: [high]
-devices:
-  - id: android-chrome
-    label: Android phone (Chrome)
-cases:
-  - id: TC-02
-    title: Apply a coupon at checkout
-    priority: high
-    steps: [Go to checkout, Enter coupon SAVE10 and tap Apply, Pay with the test card]
-    expected: Total drops by 10 percent and the order is placed
-    devices: [android-chrome]   # optional, defaults to every device
-```
-
-The budget is `perTester × testersPerBatch × number of bounties`, plus Gibwork platform fees. `plan` prints it before anything is published.
-
-## What testers submit
-
-Each bounty ends with a template that has its own case ids already filled in.
-
-```
-BUGBASH RESULT
-Device: Tecno Spark 20, Android 13, Chrome 128
-TC-01: PASS
-TC-02: FAIL - Pay button stays disabled after applying SAVE10 - https://drive.google.com/…
-TC-03: BLOCKED - staging returned 502
-END
-```
-
-The parser accepts HTML, bullets, lowercase text, "passed" or "failed", and `:`, `=` or `-` separators, because people paste from many apps. It is strict about what decides payout. Every case must be answered, every FAIL needs a description and an evidence link, every BLOCKED needs a reason, and the device line is required.
-
-## MCP server (for AI agents)
-
-```json
-{
-  "mcpServers": {
-    "gibwork-bugbash": {
-      "command": "node",
-      "args": ["/absolute/path/to/gibwork-bugbash/dist/mcp.js"],
-      "env": {
-        "SOLANA_PRIVATE_KEY": "…",
-        "BUGBASH_DIR": "/absolute/path/to/your-project/.bugbash"
-      }
-    }
-  }
-}
-```
-
-The tools are `bugbash_generate_plan`, `bugbash_import_csv`, `bugbash_plan`, `bugbash_preview_bounty`, `bugbash_publish`, `bugbash_status`, `bugbash_collect`, `bugbash_triage` and `bugbash_report`, plus `review_precheck` (read-only, see Review Copilot below).
-
-### Spend guards
-
-The agent never holds the wallet key. It can only move funds through `bugbash_publish` and `bugbash_triage` with `apply=true`, and both are guarded.
-
-1. **Confirm codes tied to the amount.** `bugbash_plan` and the `bugbash_triage` dry run return the cost along with a code such as `publish-24.00-USDC-8b32f2`. The money-moving call only accepts that exact code. The code is a hash of the run, the action, the amount and the exact batches or payout decisions, so it can't be reused. If anything changes (a different batch, new submissions, another run), the old code is refused and the agent has to show the user the new cost. A call with no code returns the cost and tells the agent to get the user's approval first.
-2. **Production is opt-in by the operator.** On Gibwork production, spending also needs `BUGBASH_MCP_ALLOW_PRODUCTION=1` in the server's environment.
-3. **Budget cap set by the operator.** `BUGBASH_MCP_MAX_BUDGET=50` refuses any run whose total escrow would go over 50 (in the plan's reward token), counting batches that are already funded. A value that can't be read blocks all spending instead of being ignored.
-4. **No choice over payees or amounts.** `bugbash_triage` takes no list of payouts. The engine pays valid work only, up to the bounty's tester slots, at the plan's `perTester` amount.
-5. **No refund tool.** Closing a run and returning escrow stays a human CLI action.
-
-Points 2 to 5 are hard limits that no tool argument can change. Point 1 makes sure any approval matches the exact amount. It relies on the agent asking the user before passing the code, which is why the operator limits exist.
-
-To watch an agent session end to end on the simulator, run this.
-
-```bash
-node examples/mcp-agent-demo.mjs
-```
-
-## Review Copilot (preview): review any Gibwork bounty
-
-`gibreview` brings the same approach to any bounty, not only QA. It checks every submission against the bounty's template and rules, ranks them into a shortlist with a reason for every verdict, then pays the winners through Gibwork escrow and refunds what nobody won. It can review a bounty you created on the Gibwork website (`attach`), or publish a new one from a brief. The plan is in [docs/review-copilot-plan.md](docs/review-copilot-plan.md).
+**1. Write the brief.**
 
 ```bash
 gibreview init brief.yaml --preset content     # or --preset dev
-gibreview text brief.yaml                      # description file + what to pick on "Create Bounty" on the website
-gibreview attach <taskId> --brief brief.yaml   # review an existing bounty, or:
-gibreview publish brief.yaml --confirm         # create and fund a new one
-gibreview collect                              # fetch submissions and run the checks
-gibreview rank                                 # shortlist, plus review-report/review.md and review.json
-gibreview show @username                       # one submission with every check result
-gibreview decide                               # dry run: who is paid, asked to fix, rejected or held
-gibreview decide --apply --confirm <code>      # pays, comments and rejects exactly what the dry run showed
-gibreview close --confirm                      # refunds the part of the pool nobody won
 ```
 
-Only `publish --confirm`, `decide --apply` and `close --confirm` move money or post anything.
-
-**For participants: check before you submit.** A bounty published with gibreview lists its rules, one line per field (`pr (required): a link; a GitHub pull request on acme/payments-sdk with passing CI`). Participants run the same checks on a draft, for free, before sending it:
+**2. Get the bounty text.**
 
 ```bash
-gibreview check <taskId> my-submission.txt     # or "-" to read the draft from stdin
+gibreview text brief.yaml
+```
+
+```
+✓ Wrote the description to brief.description.txt
+
+On gibwork.com, Create Bounty:
+  title        Beginner guide to the payments API
+  category     Misc
+  options      Open to Everyone · due Fri Oct 30 2026
+  payment      Custom minimum $10.00 (each approved submission is paid at least this; the tiers are only suggestions)
+  description  paste everything in brief.description.txt
+
+Then Continue to Payment:
+  bounty amount  $50 unlocks up to 50 submissions, reach ~200 freelancers, daily digest email
+  pay with       Wallet: the Solana wallet Gibwork made for your account (deposit USDC to it first if it is short)
+                 or Card. Any platform fee is shown before you pay.
+  Authorize & Publish moves the money. Everything before it is safe to click through.
+```
+
+The description file holds only the bounty text: your description, the judging criteria, the submission template, one rule line per field and the payout. Paste the whole file. The website offers bounty amounts of $50, $100, $200, $380 and $700, so `text` picks your pool's amount, or the next one up, and says how much will be left to refund.
+
+**3. Attach and review.**
+
+```bash
+gibreview attach <taskId> --brief brief.yaml   # read-only
+gibreview collect                              # run the checks; again later for new submissions
+gibreview score                                # optional, needs ANTHROPIC_API_KEY
+gibreview rank                                 # shortlist + review-report/review.md and review.json
+gibreview show @username                       # one submission with every check result
+```
+
+`attach` reads the pool and the minimum per approved submission from Gibwork. It warns if the bounty's text lists no rules or different ones from the brief, and if any payout in the brief is below the bounty's minimum.
+
+**4. Decide, then do it on gibwork.com.**
+
+```bash
+gibreview decide
+```
+
+```
+This bounty was made on gibwork.com, so it belongs to the wallet Gibwork created for the creator's account,
+and only that account can pay, reject or refund on it. Do these on gibwork.com, signed in as the creator:
+
+  1. Approve @ada_writes's submission and pay 25.00 USDC (1st place)
+  2. Approve @tunde.docs's submission and pay 15.00 USDC (2nd place)
+  3. Comment on @kemi_b's submission: "Thanks for your submission. It can't be accepted yet: …"
+  …
+
+When they are all done: gibreview decide --mark-done --confirm pay-40.00-USDC-7c1e2a
+```
+
+Once a participant fixes their work, `collect --recheck` and `decide` again: a fixed submission takes the next open place. When the bounty is over, refund what is left on gibwork.com.
+
+## The brief
+
+```yaml
+name: Beginner guide to the payments API
+preset: content            # content | dev | custom
+description: |
+  Write a beginner-friendly guide to our three payments endpoints…
+bounty:
+  pool: "50.00"            # the website offers $50, $100, $200, $380 or $700
+  minimum: "10.00"         # payment tab: the least any approved submission is paid
+  category: Misc           # Social Media | Development | Design | Feedback | Misc
+  access: everyone         # everyone | verified | discord | link
+  deadlineHours: 72
+criteria:                  # judging criteria, shown to participants and used by score
+  - { text: Covers all three endpoints with working examples, weight: 40 }
+  - { text: Accurate against the API reference, weight: 40 }
+  - { text: Clear for someone new to payments, weight: 20 }
+payout:
+  rule: multiple-winners   # one-winner | multiple-winners | pool
+  amounts: ["25.00", "15.00", "10.00"]
+review:
+  duplicates: 0.85         # this similar to an earlier submission is a copy
+  order: first-come        # tie-breaker: first-come or reputation
+```
+
+Annotated examples: [`examples/review/content-brief.yaml`](examples/review/content-brief.yaml) and [`examples/review/dev-brief.yaml`](examples/review/dev-brief.yaml).
+
+| Preset | Template fields | Checks |
+| --- | --- | --- |
+| `content` | `link`, `summary` | the link opens; summary 30 to 250 words |
+| `dev` | `pr`, `notes` | a GitHub pull request on the right repo, not closed unmerged, CI passing; notes length |
+| `custom` | your own fields | `reachable`, `domain`, `words` and `github` on any field |
+
+**Payouts.** Every brief must state how the bounty pays; nothing is assumed.
+
+| `payout.rule` | `amounts` | Pays |
+| --- | --- | --- |
+| `one-winner` | one amount | the best eligible submission |
+| `multiple-winners` | one amount per place | the top 3, top 10 and so on, by place |
+| `pool` | one amount | every eligible submission the same amount, until the pool runs out (or `maxWinners`) |
+
+The brief is rejected, with the reason, if:
+- payouts add up to more than the pool
+- a payout is below the minimum
+- a check is on the wrong kind of field
+- a rule's amounts don't fit it
+
+## Checks and verdicts
+
+| Verdict | Meaning | Decision |
+| --- | --- | --- |
+| `eligible` | every check passed | fills the paid places in rank order; beyond them, held as a runner-up |
+| `needs-changes` | only fixable checks failed (a dead link, failing CI, a missing field) | a comment asking for the fix, while a paid place is still open |
+| `disqualified` | a copy, late work, the wrong repository | rejected with the reason |
+| `invalid` | the SUBMISSION block was not used | rejected with the reason |
+
+- **Copies.** A reused link, or text at or above `review.duplicates` similarity to an earlier submission. Only the earliest copy keeps its place.
+- **Fair to participants.** A site that can't be reached or rate-limits a check gives "unverified", never a failure. Set `GITHUB_TOKEN` for higher GitHub rate limits.
+- **Ranking order.** AI scores when every eligible submission has a current one; then fewer unverified checks; then the brief's tie-breaker (first-come, or Gibwork reputation).
+
+## AI scoring
+
+`gibreview score` sends each eligible submission, with the text of the pages it links to, to Claude. Claude scores each criterion from 0 to 10, with a note a creator can check. The total out of 100 is weighted as the brief says.
+
+- **Untrusted content is treated as data.** The model is told that submissions and their pages are data to judge, never instructions.
+- **Scores track the exact submission.** Each score belongs to one version of a submission. A changed submission must be scored again.
+- **No partial ordering.** Scores order the shortlist only when every eligible submission has a current one.
+
+The scores and notes appear in `review.md` and `review.json`. Set `ANTHROPIC_API_KEY`; `GIBREVIEW_AI_MODEL` changes the model (default `claude-sonnet-5-5`).
+
+## For participants: check before you submit
+
+A bounty made with gibreview lists its rules, one line per field, in a fixed wording that people can read and gibreview can parse:
+
+```
+pr (required): a link; a GitHub pull request on acme/payments-sdk with passing CI
+notes (required): text; 15 to 400 words
+```
+
+```bash
+gibreview check <taskId> my-submission.txt     # or "-" to read from stdin
 ```
 
 ```
@@ -342,116 +252,182 @@ gibreview check <taskId> my-submission.txt     # or "-" to read the draft from s
 ✗ Fix these 2 problems before you submit: CI failing on acme/payments-sdk#45: test; notes has 2 words, needs at least 15.
 ```
 
-It exits 0 when the draft is ready. Creators who write the bounty on the Gibwork website paste the output of `gibreview text`, which carries the same rules, and `attach` warns when a bounty's text lists no rules or different ones. For a bounty written entirely by hand, a participant can pass the creator's brief with `--brief`. A participant's own agent can do the same through the read-only MCP tool `review_precheck`. A pre-check can't see other people's submissions, so copies are only caught at review time.
+- **Exit code.** It exits 0 when the draft is ready.
+- **No rules in the bounty.** For a bounty that lists no rules, pass the creator's brief with `--brief`.
+- **Copies aren't checked here.** A pre-check can't see other people's submissions, so copies are caught at review time.
 
-**Payouts.** Every brief must say how the bounty pays; nothing is assumed:
+## Bounties created from code
 
-| `payout.rule` | `amounts` | Pays |
+`gibreview publish brief.yaml` shows the cost; with `--confirm` it creates and funds the bounty from the wallet in `SOLANA_PRIVATE_KEY`. That wallet owns the bounty, so gibreview can also settle it:
+
+```bash
+gibreview decide --apply --confirm <code>      # pays, comments and rejects exactly what the dry run showed
+gibreview close --confirm                      # refunds what nobody won
+```
+
+- **Confirm code.** The code is a hash of the run, the total and every action with its amount. If anything changed since the dry run, it is refused.
+- **Never pays twice.** Each action is saved as it completes, so an interrupted run resumes without paying anyone twice.
+- **Stops when unsure.** It stops at an uncertain payment, and stops paying if Gibwork reports that an approval closed the bounty.
+- **Close checks first.** `close` refuses while planned winners are unpaid, unless you pass `--force`.
+
+## Commands
+
+| Command | What it does | Moves money |
 | --- | --- | --- |
-| `one-winner` | one amount | the best eligible submission |
-| `multiple-winners` | one amount per place, e.g. `["30", "20", "10"]` | the top 3, top 10 and so on, by place |
-| `pool` | one amount | every eligible submission the same amount, until the pool runs out (or `maxWinners`) |
+| `gibreview init [file] [--preset content\|dev]` | Writes an example brief | no |
+| `gibreview text <brief> [--out file] [--stdout]` | Bounty description and the steps for gibwork.com | no |
+| `gibreview attach <taskId> --brief <file> [--stage] [--mock]` | Connects a review run to a bounty | no |
+| `gibreview collect [--recheck]` | Fetches submissions and runs the checks | no |
+| `gibreview score [--model id]` | Optional AI rubric | no |
+| `gibreview rank [--out dir]` | Ranked shortlist, `review.md` and `review.json` | no |
+| `gibreview show <id\|@user>` | One submission with every check result | no |
+| `gibreview decide` | The plan: pay, ask for a fix, reject, hold | no |
+| `gibreview decide --mark-done --confirm <code>` | Records a plan you carried out on gibwork.com | no |
+| `gibreview decide --apply --confirm <code>` | Carries out the plan (bounties created from code) | yes |
+| `gibreview close [--confirm] [--force]` | Refunds what nobody won (bounties created from code) | with `--confirm` |
+| `gibreview publish <brief> [--confirm] [--prod] [--mock]` | Creates and funds a bounty from code | with `--confirm` |
+| `gibreview check <taskId> <file> [--brief file]` | Participant pre-check | no |
+| `gibreview status` | The review run | no |
+| `gibreview qa …` | The QA preset ([below](#qa-preset-gibreview-qa)) | some commands |
 
-No payout may be below the bounty's minimum per approved submission (`bounty.minimum`, the website's payment tab; it defaults to the smallest payout). The brief can also set the website's `category` and `access` (who can participate: `everyone`, `verified`, `discord`, or `link`, which only the website can set).
+Global options are `--dir <path>` (state, default `.gibreview`) and `--run <id>` (an older run). `attach` and `check` use Gibwork production, where gibwork.com bounties live, unless `--stage` is given; `publish` uses stage unless `--prod` is given.
 
-**Writing the bounty on the website instead.** `gibreview text brief.yaml` writes the description to `brief.description.txt` and prints what to pick on each tab of "Create Bounty": title, category, who can participate, due date and custom minimum, then the bounty amount on the payment page. The website only offers $50, $100, $200, $380 or $700, so `text` picks your pool's amount (or the next one up, and says how much `close` will refund) and shows what it unlocks. Paste the whole file as the description; nothing in it is instructions for you. Then `gibreview attach <taskId> --brief brief.yaml`.
+## Environment variables
 
-**Decide.** Eligible submissions fill the paid places in rank order. A submission that only failed fixable checks (a dead link, failing CI) gets a comment asking for the fix instead of a rejection, but only while a paid place is still open, so nobody is asked to do work that can no longer win. Duplicates, late work, the wrong repository and unused templates are rejected with the reason. Eligible work beyond the paid places is held for the creator. The confirm code is a hash of the run, the total and every action with its amount, so if anything changes between the dry run and `--apply`, the code is refused. Each action is saved as it completes, so an interrupted run resumes without paying anyone twice. It stops at an uncertain payment, and stops paying if Gibwork reports that an approval closed the bounty.
+Copy `.env.example` to `.env.local` (gitignored). Variables already set in your shell win over `.env.local`, which wins over `.env`.
 
-**Close.** Refuses while winners in the current plan are unpaid (override with `--force`), and warns when places are still open for submissions being fixed.
-
-**Which wallet pays.** `publish`, `decide --apply` and `close` sign with the wallet in `SOLANA_PRIVATE_KEY` and spend that wallet's own USDC. Only the wallet that created a bounty can pay, reject or refund on it. Gibwork creates a Solana wallet for every account, and the website pays only from that wallet, so a bounty made on gibwork.com belongs to it, not to an external wallet like Phantom. When `attach` finds that `SOLANA_PRIVATE_KEY` cannot act on the bounty, gibreview still collects, checks and ranks everything, but `decide` prints a checklist to do on gibwork.com as the creator (who to approve and for how much, which comment to post, which reason to give). `decide --mark-done --confirm <code>` then records those steps, so later plans neither repeat them nor misplace the winners.
-
-Try it offline with `--mock` on `publish` or `attach`:
-
-```
-  ★ #1  eligible       @ada_writes      2 checks passed
-  ★ #2  eligible       @tunde.docs      2 checks passed
-     –  needs changes  @kemi_b          https://dev.to/kemi/payments-guide-404 returns 404 (page not found)
-     –  needs changes  @shorty          summary has 6 words, needs at least 30
-     –  disqualified   @copycat         86% the same as @ada_writes's earlier submission
-     –  disqualified   @late_lara       sent …, after the deadline …
-     –  invalid        @quickcash99     no SUBMISSION block: the template was not used
-```
-
-| Preset | Template | Checks |
+| Variable | Needed | Meaning |
 | --- | --- | --- |
-| `content` | `link`, `summary` | link opens, summary 30 to 250 words |
-| `dev` | `pr`, `notes` | GitHub pull request on the right repo, not closed unmerged, CI passing; notes length |
-| `custom` | your own fields | `reachable`, `domain`, `words`, `github` on any field |
+| `SOLANA_PRIVATE_KEY` | to talk to Gibwork | The wallet gibreview signs with. It reads bounties, and pays only for bounties it created. Base58 or a JSON byte array, never a recovery phrase. Never commit it or paste it into a chat. |
+| `GIBWORK_ENV` | no | Forces `stage` or `production` for every command |
+| `GIBREVIEW_MOCK` | no | `1` uses the offline simulator |
+| `GITHUB_TOKEN` | no | Higher GitHub rate limits for pull request checks |
+| `ANTHROPIC_API_KEY` | for `score` and `qa generate --ai` | Claude API key |
+| `GIBREVIEW_DIR` | MCP only | State root, default `./.gibreview` (QA runs in its `qa` folder) |
+| `GIBREVIEW_MCP_ALLOW_PRODUCTION` | MCP only | `1` lets agents pay on production; they still need the confirm code |
+| `GIBREVIEW_MCP_MAX_BUDGET` | MCP only | Most escrow one QA run may fund through the MCP server |
 
-Every brief also checks for duplicates (the same link, or text at or above `review.duplicates` similarity to an earlier submission) and for work sent after the deadline. Checks never count against a participant when a site can't be reached or rate-limits the check: those are reported as unverified. Set `GITHUB_TOKEN` for higher GitHub rate limits. See [examples/review/](examples/review/) for annotated briefs.
+## MCP server (for AI agents)
 
-## CI release gate
-
-[`examples/github-action-release-gate.yml`](examples/github-action-release-gate.yml) collects results, optionally pays testers, uploads the reports and publishes `junit.xml` as a check. Human test results show up next to your unit tests, and a blocked release fails the job.
-
-## Sample output
-
-The files in [`examples/sample-output/`](examples/sample-output/) come from `npm run demo`.
-
-- [`report.md`](examples/sample-output/report.md) contains the release gate, matrix, failure evidence and tester ledger
-- [`junit.xml`](examples/sample-output/junit.xml) has one suite per device and one test case per case
-- [`results.csv`](examples/sample-output/results.csv) has one row per tester per case, ready for a spreadsheet
-- [`summary.json`](examples/sample-output/summary.json) is the machine-readable gate and matrix
-- [`terminal-transcript.txt`](examples/sample-output/terminal-transcript.txt) is the full CLI session
-
-An excerpt from the report:
-
-```
-Release gate FAIL
-  • TC-02 [high] fails on Android phone (Chrome) (2 fail / 0 pass)
-
-  PASS      TC-01    Guest checkout with card                 android-chrome:PASS  ios-safari:PASS  desktop:PASS
-  FAIL      TC-02    Apply a coupon at checkout               android-chrome:FAIL  ios-safari:PASS  desktop:PASS
-  DISPUTED  TC-03    Order confirmation email                 android-chrome:PASS  ios-safari:DISPUTED  desktop:PASS
-  …
-Paid 24.00 USDC to 12 testers
+```json
+{
+  "mcpServers": {
+    "gibreview": {
+      "command": "node",
+      "args": ["/absolute/path/to/gibreview/dist/mcp.js"],
+      "env": {
+        "SOLANA_PRIVATE_KEY": "…",
+        "GIBREVIEW_DIR": "/absolute/path/to/your-project/.gibreview"
+      }
+    }
+  }
+}
 ```
 
-## Safety and reliability decisions
+| Tools | For |
+| --- | --- |
+| `review_text`, `review_attach`, `review_collect`, `review_score`, `review_rank`, `review_decide`, `review_close`, `review_status` | creators: the whole review, ending in a website checklist or, for bounties created from code, payment |
+| `review_precheck` | participants: read-only pre-check |
+| `qa_generate_plan`, `qa_import_csv`, `qa_plan`, `qa_preview_bounty`, `qa_publish`, `qa_status`, `qa_collect`, `qa_triage`, `qa_report` | the QA preset |
 
-- **Nothing moves money without an explicit flag.** `publish`, `triage --apply` and `refund` each need confirmation. Dry runs show the exact amounts first.
-- **Idempotent publishing.** Each published task id is saved immediately with an atomic write, so a rerun after a crash or rate limit skips what already went out.
-- **Ambiguous transactions are never retried.** If the SDK raises `GibworkAmbiguousSubmitError`, the intent id is recorded, the batch is marked *unresolved* and the run stops. This prevents paying twice.
-- **Rate limits.** A `429` stops publishing cleanly and reports the `retryAfter` value.
-- **Payout cap.** Triage never approves more testers than a bounty's pool covers. Extra valid work is held, not paid.
-- **Only checked work changes the results matrix.** Spam, rejected work and incomplete submissions still waiting for triage are left out, so running `report` early can't block or pass a release on a FAIL with no evidence. The report says how many are waiting.
-- **Unknown Gibwork statuses are never guessed.** A submission status BugBash doesn't recognise (such as `CLOSED`) takes up a tester slot, is never paid or rejected automatically, and is flagged in triage and the report for a person to check.
-- **One process per run.** `publish`, `collect`, `triage`, `refund` and the matching MCP tools hold a lock on the run and work on a fresh copy, so a terminal and an agent can't pay or refund the same run at the same time. A lock left by a crashed process is cleared automatically.
-- **Keys stay local.** The key is passed to the SDK's Node signer and never written to state or logs.
+### Spend guards
+
+The agent never holds a key, and it can't choose payees or amounts: those come from the brief's payout rule or the test plan.
+
+1. **Confirm codes tied to the exact plan.** Dry runs return the cost and a code such as `pay-40.00-USDC-7c1e2a`. Only that exact code is accepted, and any change to the plan makes a new one. A call without a code returns the cost and tells the agent to get the user's approval.
+2. **Website bounties stay with the user.** For a bounty made on gibwork.com, `review_decide` returns the checklist. The agent records it with `markDone` only after the user says it is done.
+3. **Production is opted into by the operator.** Paying on production also needs `GIBREVIEW_MCP_ALLOW_PRODUCTION=1` in the server's environment.
+4. **Budget cap.** `GIBREVIEW_MCP_MAX_BUDGET` caps what a QA run may fund, counting what it already funded. A value that can't be read blocks spending.
+5. **Some steps stay human.** Closing a review while winners are unpaid, and refunding a QA run, are not agent tools.
+
+`node examples/mcp-agent-demo.mjs` shows an agent session end to end on the simulator.
+
+## QA preset (`gibreview qa`)
+
+Crowdsourced manual QA: a test plan becomes paid bounties for testers on real phones and browsers, and their results become a release-gate report.
+
+```
+testplan.yaml ─► gibreview qa plan ─► publish ─► Gibwork bounties ─► testers on real devices
+                                                                          │
+     CI / agent ◄── exit code + junit.xml ◄── report ◄── triage ◄── collect
+```
+
+```bash
+npm run demo                                   # the whole loop on the simulator
+gibreview qa init testplan.yaml
+gibreview qa plan testplan.yaml --mock
+gibreview qa publish --confirm
+gibreview qa collect
+gibreview qa triage                            # dry run: who is paid and why
+gibreview qa triage --apply
+gibreview qa report                            # exits 1: the coupon bug blocks the release
+```
+
+**The QA steps**
+
+1. **Plan.** It validates a YAML test plan (cases, steps, expected results, priorities, device classes). It splits the plan into bounties of about 20 minutes each, one per device class and group of cases. See [`examples/checkout-regression.yaml`](examples/checkout-regression.yaml). The budget is `perTester × testersPerBatch × bounties`.
+2. **Start from what you have.**
+   - `gibreview qa generate <url>` drafts cases from a feature page. It uses a rule-based writer, or Claude with `ANTHROPIC_API_KEY`.
+   - `gibreview qa import cases.csv --url <build>` reads Excel, Google Sheets, TestRail, Zephyr, Xray or Qase exports.
+   - Drafts are marked `draft: true`, and `plan` refuses them until a person has reviewed them.
+3. **Testers submit** a block with their own case ids:
+
+   ```
+   QA RESULT
+   Device: Tecno Spark 20, Android 13, Chrome 128
+   TC-01: PASS
+   TC-02: FAIL - Pay button stays disabled after applying SAVE10 - https://drive.google.com/…
+   TC-03: BLOCKED - staging returned 502
+   END
+   ```
+
+   The parser accepts HTML, bullets, any capitalisation and `:`, `=` or `-` separators. It is strict about what decides payment: every case answered, a description and an evidence link for each FAIL, a reason for each BLOCKED, and a device line.
+4. **Triage** pays complete, evidenced work first come, first served, up to the tester slots, and rejects the rest with a reason.
+5. **Report** builds a case × device matrix. Two testers reproducing a failure gives **FAIL**; testers disagreeing gives **DISPUTED**. It writes `report.md`, `results.csv`, `junit.xml` and `summary.json`.
+
+   The exit code is the release gate:
+   - `0`: the release passes
+   - `1`: it's blocked
+   - `2`: coverage is missing
+
+   [`examples/github-action-release-gate.yml`](examples/github-action-release-gate.yml) runs it in CI, and [`examples/sample-output/`](examples/sample-output/) is a full run.
+
+The QA commands are `init`, `generate`, `import`, `plan`, `publish`, `status`, `collect`, `triage`, `report`, `refund`, `show` and `doctor`. Run `gibreview qa --help` for options. QA runs are stored in `.gibreview/qa`, and reports go to `qa-report/`.
+
+## Safety and reliability
+
+- **Nothing moves money without an explicit flag.** `publish --confirm`, `decide --apply`, `close --confirm`, `qa triage --apply` and `qa refund --confirm`. Dry runs show the exact amounts first.
+- **Saved before every payment, never retried blindly.** Each published bounty and each payment is saved with an atomic write as it happens. If the SDK reports an uncertain transaction (`GibworkAmbiguousSubmitError`), the run records it and stops, so nobody is paid twice.
+- **One process per run.** Commands that change a run hold a lock on it, so a terminal and an agent can't pay the same run at once. A lock left by a crashed process is cleared.
+- **Unknown Gibwork statuses are never guessed.** They are held for a person to check.
+- **Participant links are only fetched.** Fetches have timeouts, nothing from them is run, and only the AI scorer reads page text.
+- **Keys stay local.** The key goes to the SDK's signer and is never written to state or logs.
 
 ## Project layout
 
 ```
 src/
-  cli.ts        bugbash CLI (commander)
-  mcp.ts        MCP server (stdio)
-  spendguard.ts MCP spend guard: amount-bound confirm codes, production opt-in, budget cap
-  engine.ts     plan / publish / collect / triage / report / refund, shared by CLI and MCP
-  gibwork.ts    SDK client factory and the slice of the SDK BugBash depends on
-  mock.ts       offline simulator with the same method shapes as the SDK
-  plan.ts       test plan schema (zod), batching, decimal-safe money
-  template.ts   generic submission templates: render, tolerant parse, missing fields
-  content.ts    bounty HTML for the QA preset
-  parser.ts     QA preset on top of template.ts: result template and payout rules
-  aggregate.ts  case × device consensus and release gate
-  report.ts     Markdown, CSV, JUnit XML and JSON writers
-  generate/     URL → page model → draft test plan (rule-based and AI writers)
-  csvcases.ts   CSV/TSV case reader (column mapping, priorities, step splitting)
-  importplan.ts bugbash import, CSV → test plan
-  review/       gibreview: brief format, checks, collect, rank, decide and close, shortlist report, offline web for --mock
-  test/         node:test unit and end-to-end tests
-examples/       sample plan, demo scripts, CI workflow, sample output, review briefs
-docs/           Review Copilot plan
+  review/       gibreview: brief, checks, collect and rank, decide, pre-check, AI scoring, MCP tools, CLI
+  template.ts   submission templates: render, tolerant parse, missing fields
+  spendguard.ts confirm codes, production opt-in, budget cap
+  state.ts      run state, atomic saves, per-run locks
+  gibwork.ts    SDK client factory and environment selection
+  mock.ts       offline simulator with the SDK's method shapes
+  mcp.ts        MCP server
+  cli.ts, engine.ts, plan.ts, parser.ts, aggregate.ts, report.ts, content.ts,
+  generate/, csvcases.ts, importplan.ts   the QA preset
+  test/         unit and end-to-end tests on the simulator
+examples/       briefs, a QA plan, demo scripts, CI workflow, sample output
+docs/           plan.md (design and open questions), verification.md (checking it on real Gibwork)
 ```
 
-## Limitations and next steps
+## Status and limits
 
-- The Gibwork SDK has no media upload yet, so testers attach evidence as links (Drive, Loom, Imgur), not files.
-- Testers are matched by device *class* on trust. A useful next step is asking for a screenshot of the device's About page and checking it.
-- Retesting a fixed bug currently means creating a new plan with just that case. A `bugbash retest TC-02` command would make that one step.
+- **Built and tested on the simulator.** All 77 tests and both demos run offline. Checking it against real Gibwork needs a small real bounty: follow [docs/verification.md](docs/verification.md). Open questions for Gibwork are in [docs/plan.md](docs/plan.md), section 9.
+- **Checklists have no direct links yet.** The website checklist doesn't link to each submission yet, because gibreview doesn't know gibwork.com's submission page address.
+- **Fixing a submission depends on Gibwork.** How a participant fixes a submission after a comment (a reply, an edit, or a new submission) is up to Gibwork; gibreview re-checks whatever changed.
+- **Evidence is links, not files.** The SDK has no media upload, so evidence is a link.
 
 ## License
 
-MIT. Note that `@gibwork/sdk` currently ships as UNLICENSED while Gibwork finalises its license.
+MIT. `@gibwork/sdk` currently ships as UNLICENSED while Gibwork finalises its license.

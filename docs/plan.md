@@ -1,6 +1,6 @@
-# Gibwork Review Copilot: implementation plan
+# gibreview: design and plan
 
-Status: proposal · Branch: `release-hardening` · Supersedes the QA-only scope of BugBash, which becomes the `qa` preset.
+Status: M1 to M4 and M6 built; M5 needs a real run on Gibwork ([verification.md](verification.md)). The project started as BugBash, a QA-only tool, which is now the `qa` preset (`gibreview qa`).
 
 ## 1. Goal
 
@@ -12,7 +12,7 @@ Give Gibwork bounty creators a CLI and MCP server that turns a pile of submissio
 
 | Need | SDK call | Notes |
 | --- | --- | --- |
-| Review bounties made on the Gibwork site | `tasks.list`, `tasks.get` | Attach by task id; no need to publish through the copilot |
+| Review bounties made on the Gibwork site | `tasks.list`, `tasks.get` | Attach by task id; no need to publish through gibreview |
 | Publish with escrow | `tasks.create`, `tasks.prepareCreate` | `prepareCreate` returns the fee quote unsigned |
 | Read submissions | `submissions.list`, `submissions.get` | Each has `user.approvedTaskSubmissions`, `rejectedTaskSubmissions`, `rating` |
 | Request changes | `submissions.comments.create` | Comment on the submission instead of rejecting |
@@ -23,7 +23,7 @@ Give Gibwork bounty creators a CLI and MCP server that turns a pile of submissio
 
 **How payouts work (confirmed by the project owner, 2026-10-27):**
 
-- The creator must state how the bounty pays; the copilot never assumes a rule or a number of winners:
+- The creator must state how the bounty pays; gibreview never assumes a rule or a number of winners:
   - `one-winner`: one submission is paid
   - `multiple-winners`: a set amount per place for the top 3, top 10 and so on
   - `pool`: every accepted submission earns the same amount until the pool runs out (or `maxWinners`)
@@ -33,7 +33,7 @@ Give Gibwork bounty creators a CLI and MCP server that turns a pile of submissio
 - Money nobody wins is refunded to the creator through `close`.
 
 **Participation.**
-- The SDK documents a submission fee ("currently 0.15 USDC") for submissions made through the API. Gibwork's site does not show a fee for joining bounties, so the copilot never assumes one. It reads the `fee` quote when it matters.
+- The SDK documents a submission fee ("currently 0.15 USDC") for submissions made through the API. Gibwork's site does not show a fee for joining bounties, so gibreview never assumes one. It reads the `fee` quote when it matters.
 - Some bounties have eligibility rules: `requiresPremium` (subscribers only), verified accounts, Twitter follower or engagement minimums, or Discord server and role membership. Gibwork enforces these before anyone can submit, so review does not check them.
 - The website's options tab sets who can participate: Open to Everyone, Only Verified Accounts, Only to those with a Link, Only Discord Members. The brief's `bounty.access` mirrors it. The SDK can set verified and Discord; "link" exists only on the website, so `publish` refuses it and points to `text` plus `attach`.
 - Categories on the website: Social Media, Development, Design, Feedback, Misc (`bounty.category`, sent as the first tag).
@@ -70,17 +70,23 @@ Open question for Gibwork:
 
 ## 3. How a creator uses it
 
+The main flow: the creator signs in to gibwork.com and pays from their Gibwork account wallet; gibreview does the reviewing.
+
 ```bash
-gibreview brief init api-docs.yaml --preset content     # or: gibreview attach <taskId>
-gibreview publish --confirm                             # skip when attaching to an existing bounty
+gibreview init brief.yaml --preset content              # what to submit, the checks, the payout
+gibreview text brief.yaml                               # what to enter on "Create Bounty", and the description to paste
+# … create and pay for the bounty on gibwork.com …
+gibreview attach <taskId> --brief brief.yaml            # read-only
 gibreview collect                                       # fetch and check every submission
-gibreview rank                                          # shortlist with scores and reasons
-gibreview decide                                        # dry run: PAY / CHANGES / REJECT / HOLD
-gibreview decide --apply --confirm <code>               # pays through escrow, comments, rejects
-gibreview close --confirm                               # refund what is left, write the report
+gibreview score                                         # optional AI rubric
+gibreview rank                                          # shortlist with a reason for every verdict
+gibreview decide                                        # the plan, as a checklist to do on gibwork.com
+gibreview decide --mark-done --confirm <code>           # record it once done
 ```
 
-Agent version, over MCP: "Review the submissions on my API-docs bounty, shortlist the top 3 and tell me who to pay." The agent calls `review_collect`, `review_rank`, shows the shortlist and cost, then `review_decide` with the confirm code once the user agrees.
+For bounties created from code (`gibreview publish`), the wallet in `SOLANA_PRIVATE_KEY` owns the bounty, so `decide --apply --confirm <code>` pays, comments and rejects through Gibwork, and `close --confirm` refunds the rest.
+
+Agent version, over MCP: "Review the submissions on my API-docs bounty, shortlist the top 3 and tell me who to pay." The agent calls `review_attach`, `review_collect`, `review_rank`, shows the shortlist, then `review_decide`: the user approves the plan, does the checklist on gibwork.com, and the agent records it with the confirm code.
 
 ## 4. How a participant uses it
 
@@ -122,7 +128,7 @@ review:
   duplicates: 0.85              # similarity at or above this is a duplicate
 ```
 
-A submission fills the template as a block, the same idea as today's `BUGBASH RESULT`:
+A submission fills the template as a block, the same idea as the QA preset's `QA RESULT`:
 
 ```
 SUBMISSION
@@ -131,7 +137,7 @@ summary: A step-by-step guide that …
 END
 ```
 
-The `qa` preset generates one template field per test case (`TC-01: PASS | FAIL | BLOCKED - note - evidence`), so the current BugBash flow is a preset, not a separate product.
+The `qa` preset generates one template field per test case (`TC-01: PASS | FAIL | BLOCKED - note - evidence`), so the QA flow is a preset, not a separate product.
 
 ## 6. Review pipeline
 
@@ -152,24 +158,23 @@ Each check returns `{ id, status: pass | warn | fail, message, fixable }`.
 
 **Decisions.** The payout rule turns the ranking into actions: `approve(amount)`, `request-changes(comment)`, `reject(reason)` or `hold`. The existing spend guard covers every approval: amount-bound confirm code, budget cap, production opt-in.
 
-## 7. Code: what moves where
+## 7. Code
 
-| Today (BugBash) | Becomes | Change |
-| --- | --- | --- |
-| `plan.ts` (test plan schema) | `brief.ts` | New schema above; `qa` preset keeps the old fields |
-| `content.ts` + `parser.ts` | `template.ts` | Generic template render and parse; QA parsing becomes a template |
-| `engine.ts` publish/collect/refund | `engine.ts` | Add `attach`, `comment`; collect stores reputation |
-| `engine.ts` `planTriage` | `decide.ts` | Payout rules instead of first-come slots |
-| `aggregate.ts` | `presets/qa/aggregate.ts` | Only the QA preset needs tester consensus |
-| `report.ts` | `report.ts` | Shortlist report for all presets; matrix/JUnit stay for `qa` |
-| `generate/` | `presets/qa/generate/` | Unchanged, QA only |
-| `spendguard.ts`, `state.ts`, `mock.ts` | same | Mock gains comments, attach, variable approve amounts |
-| `mcp.ts` | `mcp.ts` | Tools renamed `review_*`, plus `review_precheck` |
-| (new) | `checks/` | `required`, `url`, `domain`, `words`, `github-pr`, `duplicate`, `deadline`, `qa-cases` |
-| (new) | `score/ai.ts` | Rubric scorer, reusing the fetch-and-validate pattern of `generate/ai.ts` |
-| (new) | `presets/{dev,content,custom}.ts` | Default templates and checks per bounty type |
+| File | Role |
+| --- | --- |
+| `review/brief.ts` | Brief schema and presets, payout rules, published rule lines, website guide (`text`) |
+| `review/checks.ts` | `reachable`, `domain`, `words`, `github` (repo, state, CI), duplicates, deadline |
+| `review/engine.ts` | `publish`, `attach` (with who-can-pay), `collect`, verdicts, `rank` |
+| `review/decide.ts` | Payout plan, confirm code, apply, website checklist and `mark-done`, `close` |
+| `review/precheck.ts` | Participant pre-check from the bounty's published rules |
+| `review/score.ts` | Optional AI rubric |
+| `review/mcp-tools.ts` | `review_*` MCP tools |
+| `review/cli.ts` | The `gibreview` CLI; `gibreview qa` runs `cli.ts` |
+| `template.ts` | Generic submission templates: render, tolerant parse, missing fields |
+| `cli.ts`, `engine.ts`, `plan.ts`, `parser.ts`, `aggregate.ts`, `report.ts`, `generate/`, `importplan.ts` | The `qa` preset |
+| `spendguard.ts`, `state.ts`, `gibwork.ts`, `mock.ts`, `mcp.ts` | Shared: confirm codes and caps, run state and locks, SDK client, simulator, MCP server |
 
-CLI name: `gibreview`, with `bugbash` kept as an alias that runs the `qa` preset, so existing docs and the CI example keep working.
+One CLI, `gibreview`; the QA flow is `gibreview qa`.
 
 ## 8. Milestones
 
@@ -179,12 +184,12 @@ Each milestone keeps every existing test green.
 | --- | --- | --- |
 | M1 ✅ | Generic `template.ts`; QA parser rebuilt on it with identical results | no |
 | M2 ✅ | Brief format, `attach`, `collect`, checks for `dev` and `content`, `rank`, shortlist report | no (except `publish --confirm`) |
-| M3 ✅ | `decide` with payout rules, request-changes comments, confirm code on approvals, `close` (CLI; the `review_*` MCP tools are not built yet) | yes |
-| M4 ✅ | Participant pre-check (`check` command and `review_precheck` tool); bounties publish their rules in a fixed wording the pre-check reads back | no |
-| M5 | Stage verification pass (section 9), mock updated to match | yes, small |
-| M6 (stretch) | AI rubric scorer | no |
+| M3 ✅ | `decide` with payout rules, request-changes comments, confirm code on approvals, `close`; website checklist and `mark-done` for gibwork.com bounties; `review_*` MCP tools | yes |
+| M4 ✅ | Participant pre-check (`check` command and `review_precheck` tool); bounties publish their rules in a fixed wording the pre-check reads back; `text` for the website | no |
+| M5 | Verification on real Gibwork: [verification.md](verification.md) | yes, small |
+| M6 ✅ | AI rubric scorer (`score`, `review_score`) | no |
 
-M1, M2 and M4 can be built and demoed fully on the mock, without funds.
+Everything except M5 is built and tested on the simulator, without funds. M5 needs the owner to spend a small, real amount.
 
 ## 9. Questions for Gibwork and the stage pass
 
