@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { RankedEntry, ReviewState, ReviewVerdict } from './engine.js';
+import { contentHash, type RankedEntry, type ReviewState, type ReviewVerdict } from './engine.js';
 
 const md = (s: string) => s.replace(/\|/g, '\\|').replace(/\n/g, ' ');
 const LABEL: Record<ReviewVerdict, string> = { eligible: '✅ eligible', 'needs-changes': '✏️ needs changes', disqualified: '⛔ disqualified', invalid: '🗑️ invalid' };
@@ -22,6 +22,11 @@ export function renderShortlist(state: ReviewState, ranked: RankedEntry[]): stri
     out.push(`### ${r.place}. @${s.username}`, '');
     for (const [k, v] of Object.entries(s.fields)) out.push(`- **${k}:** ${v.urls[0] ?? md(v.text.slice(0, 300))}`);
     out.push(`- Checks: ${r.reason}`);
+    const ai = s.aiScore && s.aiScore.contentHash === contentHash(s.content) ? s.aiScore : null;
+    if (ai) {
+      out.push(`- AI score ${ai.score}/100 (advisory, ${ai.model}): ${md(ai.summary)}`);
+      for (const c of ai.byCriterion) out.push(`  - ${md(c.criterion)}: ${c.score}/10. ${md(c.note)}`);
+    }
     if (r.warnings.length) out.push(`- Unverified: ${r.warnings.map(md).join('; ')}`);
     if (s.reputation) out.push(`- Gibwork record: ${s.reputation.approved} approved, ${s.reputation.rejected} rejected, rating ${s.reputation.rating}`);
     out.push('');
@@ -63,6 +68,7 @@ export async function writeShortlist(state: ReviewState, ranked: RankedEntry[], 
           reason: r.reason,
           checks: r.submission.checks,
           fields: r.submission.fields,
+          aiScore: r.submission.aiScore && r.submission.aiScore.contentHash === contentHash(r.submission.content) ? r.submission.aiScore : null,
         })),
       },
       null,

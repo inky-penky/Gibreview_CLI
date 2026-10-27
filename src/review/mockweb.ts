@@ -20,7 +20,7 @@ const CHECK_RUNS: Record<string, Array<{ name: string; status: string; conclusio
   sha39: [{ name: 'test', status: 'completed', conclusion: 'success' }],
 };
 
-const respond = (status: number, body: unknown = {}) => ({ status, ok: status >= 200 && status < 300, json: async () => body, body: null });
+const respond = (status: number, body: unknown = {}, page = '') => ({ status, ok: status >= 200 && status < 300, json: async () => body, text: async () => page, body: null });
 
 export const mockFetch: FetchLike = async (url) => {
   const api = /^https:\/\/api\.github\.com\/repos\/acme\/payments-sdk\/(pulls\/(\d+)|commits\/(\w+)\/check-runs)$/.exec(url);
@@ -33,5 +33,5 @@ export const mockFetch: FetchLike = async (url) => {
   }
   if (url.startsWith('https://api.github.com/')) return respond(404);
   if (/404|dead/i.test(url)) return respond(404);
-  return respond(200);
+  return respond(200, {}, `<html><body><h1>Simulated page</h1><p>Content published at ${url}.</p></body></html>`);
 };

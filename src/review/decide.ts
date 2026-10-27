@@ -1,11 +1,10 @@
-import { createHash } from 'node:crypto';
 import { GibworkAmbiguousSubmitError } from '@gibwork/sdk';
 import { describeError } from '../engine.js';
 import type { GibworkLike } from '../gibwork.js';
 import { fromCents, toCents } from '../plan.js';
 import { spendCode, type Spend } from '../spendguard.js';
 import { ordinal, placeAmount, winnerSlots } from './brief.js';
-import { rankReview, type ReviewState, type ReviewStore } from './engine.js';
+import { contentHash, rankReview, type ReviewState, type ReviewStore } from './engine.js';
 
 /**
  * Turns the ranking into decisions: pay the winners by the brief's payout rule, ask for fixes where a
@@ -38,7 +37,7 @@ export interface DecisionPlan {
   notes: string[];
 }
 
-export const contentHash = (content: string) => createHash('sha256').update(content).digest('hex').slice(0, 12);
+export { contentHash };
 
 const failures = (checks: ReviewState['submissions'][string]['checks'], fixable: boolean) =>
   checks.filter((c) => c.status === 'fail' && c.fixable === fixable).map((c) => c.message);

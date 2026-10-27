@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { GibworkAmbiguousSubmitError } from '@gibwork/sdk';
 import type { CreateTaskInput } from '@gibwork/sdk';
 import { describeError, mapReviewStatus } from '../engine.js';
@@ -7,8 +8,12 @@ import type { Environment, ReviewStatus, Store } from '../state.js';
 import { missingFields, parseTemplate } from '../template.js';
 import { briefContent, briefTemplate, compareRules, minimumPayment, siteCategory, totalPayoutCents, winnerSlots, type Brief } from './brief.js';
 import { checkFields, deadlineCheck, findDuplicates, type CheckContext, type CheckResult, type FieldValue } from './checks.js';
+import type { AiScore } from './score.js';
 
 export type ReviewVerdict = 'eligible' | 'needs-changes' | 'disqualified' | 'invalid';
+
+/** Identifies one version of a submission, so fix requests and AI scores apply only to what they saw. */
+export const contentHash = (content: string) => createHash('sha256').update(content).digest('hex').slice(0, 12);
 
 export interface Reputation {
   approved: number;
@@ -31,6 +36,8 @@ export interface ReviewSubmission {
   decision?: ReviewDecision;
   /** Set when gibreview asked for a fix; contentHash says which version of the submission was commented on. */
   changesRequested?: { at: string; message: string; contentHash: string };
+  /** Set by gibreview score. Ignored once the submission changes. */
+  aiScore?: AiScore;
 }
 
 export interface ReviewDecision {
@@ -259,6 +266,7 @@ export async function collectReview(state: ReviewState, client: GibworkLike, sto
         verdict: 'invalid',
         ...(prev?.decision ? { decision: prev.decision } : {}),
         ...(prev?.changesRequested ? { changesRequested: prev.changesRequested } : {}),
+        ...(prev?.aiScore ? { aiScore: prev.aiScore } : {}),
       };
       const parsed = parseTemplate(s.content, template);
       sub.fields = Object.fromEntries([...parsed.fields].map(([k, v]) => [k, { text: v.text, urls: v.urls }]));
@@ -331,7 +339,13 @@ export function rankReview(state: ReviewState): RankedEntry[] {
     state.brief.review.order === 'reputation'
       ? repScore(b.reputation) - repScore(a.reputation) || a.createdAt.localeCompare(b.createdAt)
       : a.createdAt.localeCompare(b.createdAt) || repScore(b.reputation) - repScore(a.reputation);
-  const ordered = [...subs].sort((a, b) => VERDICT_ORDER[a.verdict] - VERDICT_ORDER[b.verdict] || warnCount(a) - warnCount(b) || tieBreak(a, b));
+  // AI scores order eligible work only when every eligible submission has a current one; a partial
+  // scoring would favour whoever happened to be scored.
+  const score = (s: ReviewSubmission) => (s.aiScore && s.aiScore.contentHash === contentHash(s.content) ? s.aiScore.score : null);
+  const eligible = subs.filter((s) => s.verdict === 'eligible');
+  const scored = eligible.length > 0 && eligible.every((s) => score(s) !== null);
+  const byScore = (a: ReviewSubmission, b: ReviewSubmission) => (scored && a.verdict === 'eligible' && b.verdict === 'eligible' ? score(b)! - score(a)! : 0);
+  const ordered = [...subs].sort((a, b) => VERDICT_ORDER[a.verdict] - VERDICT_ORDER[b.verdict] || byScore(a, b) || warnCount(a) - warnCount(b) || tieBreak(a, b));
 
   const slots = winnerSlots(state.brief, toCents(state.task.pool));
   let place = 0;
@@ -346,7 +360,7 @@ export function rankReview(state: ReviewState): RankedEntry[] {
         shortlisted: place <= slots,
         submission: s,
         warnings,
-        reason: `${passed} check${passed === 1 ? '' : 's'} passed${warnings.length ? `, ${warnings.length} unverified` : ''}`,
+        reason: `${scored ? `AI score ${score(s)}/100 · ` : ''}${passed} check${passed === 1 ? '' : 's'} passed${warnings.length ? `, ${warnings.length} unverified` : ''}`,
       };
     }
     const reason =

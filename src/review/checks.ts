@@ -26,6 +26,8 @@ export type FetchLike = (url: string, init?: { method?: string; headers?: Record
   status: number;
   ok: boolean;
   json(): Promise<unknown>;
+  /** Page text, used only by the AI scorer. */
+  text?(): Promise<string>;
   body?: { cancel(): Promise<void> } | null;
 }>;
 
@@ -42,7 +44,7 @@ const fail = (id: string, field: string, message: string, fixable = true): Check
 const words = (s: string) => s.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
 
 async function get(ctx: CheckContext, url: string, headers: Record<string, string> = {}) {
-  const res = await ctx.fetch(url, { method: 'GET', redirect: 'follow', headers: { 'user-agent': 'gibwork-review/0.1', ...headers }, signal: AbortSignal.timeout(ctx.timeoutMs ?? 10_000) });
+  const res = await ctx.fetch(url, { method: 'GET', redirect: 'follow', headers: { 'user-agent': 'gibreview/0.1', ...headers }, signal: AbortSignal.timeout(ctx.timeoutMs ?? 10_000) });
   return res;
 }
 

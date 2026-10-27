@@ -15,6 +15,7 @@ import { attachTask, collectReview, publishBrief, publishPreview, rankReview, ty
 import { applyDecisions, closePreview, closeReview, decisionCode, planDecisions, recordDecisions, websiteChecklist, type ReviewAction } from './decide.js';
 import { mockFetch } from './mockweb.js';
 import { precheck } from './precheck.js';
+import { scoreReview } from './score.js';
 import { writeShortlist } from './report.js';
 
 loadEnvFiles();
@@ -343,6 +344,26 @@ program
     console.log(htmlToText(s.content), '\n');
     const icon = { pass: c.green('✓'), warn: c.yellow('?'), fail: c.red('✗') };
     for (const ch of s.checks) console.log(`  ${icon[ch.status]} ${ch.id.padEnd(10)} ${ch.message}${ch.status === 'fail' && !ch.fixable ? c.red('  (disqualifies)') : ''}`);
+  });
+
+program
+  .command('score')
+  .description("AI rubric: score eligible submissions against the brief's criteria (needs ANTHROPIC_API_KEY)")
+  .option('--model <id>', 'Claude model (default: GIBREVIEW_AI_MODEL or claude-sonnet-5-5)')
+  .action(async (opts: { model?: string }) => {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) throw new Error('Set ANTHROPIC_API_KEY to score submissions. Scoring is optional; rank works without it.');
+    const res = await store().withRun(program.opts().run, (state) =>
+      scoreReview(state, store(), checkContext(state.environment), { apiKey, model: opts.model, log }),
+    );
+    console.log(`${c.green('✓')} ${res.scored.length} scored${res.kept ? `, ${res.kept} unchanged since their last score` : ''}`);
+    for (const f of res.failed) console.log(c.red(`  ✗ @${f.username}: ${f.error}`));
+    if (res.failed.length) {
+      process.exitCode = 1;
+      console.log(c.dim('Ranking ignores AI scores until every eligible submission has one. Run score again.'));
+    }
+    console.log(c.dim('\nSubmissions and their linked pages were sent to Anthropic for scoring. Scores are advisory.'));
+    console.log(`Next ${c.bold('gibreview rank')}`);
   });
 
 // The QA preset (test plan -> tester bounties -> release-gate report) is its own command set.
