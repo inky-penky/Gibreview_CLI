@@ -1,5 +1,5 @@
 
-$ bugbash generate <feature url> --out draft.yaml
+$ gibreview qa generate <feature url> --out draft.yaml
 Read Checkout · Acme Shop (via file)
   2 forms, 9 fields, 1 actions, 4 nav links
 
@@ -18,20 +18,20 @@ Read Checkout · Acme Shop (via file)
   TC-11  medium  "Edit cart" works  • needs review
   TC-12  medium  Layout works on a phone screen
 
-✓ Wrote draft.yaml as a draft. Review it, delete draft: true, then run bugbash plan draft.yaml
+✓ Wrote draft.yaml as a draft. Review it, delete draft: true, then run gibreview qa plan draft.yaml
 
-$ bugbash plan draft.yaml   (refused until reviewed)
+$ gibreview qa plan draft.yaml   (refused until reviewed)
 ✗ draft.yaml is a generated draft. Review every case, fix expected results, then delete "draft: true" before testers are paid to run it.
   - TC-02: Replace the generic expected result with the exact success message or page the team expects
   - TC-09: Say where testers can confirm a single order was created, for example the orders page
   - TC-10: Replace the generic expected result with the exact success message or page the team expects
   - TC-11: Describe exactly what "Edit cart" should do
 
-$ bugbash init testplan.yaml   (a reviewed plan)
-✓ Wrote testplan.yaml. Edit the cases and devices, then run bugbash plan testplan.yaml
+$ gibreview qa init testplan.yaml   (a reviewed plan)
+✓ Wrote testplan.yaml. Edit the cases and devices, then run gibreview qa plan testplan.yaml
 
-$ bugbash plan testplan.yaml --mock
-Run acme-shop-checkout-regre-20261007-mklr  mock
+$ gibreview qa plan testplan.yaml --mock
+Run acme-shop-checkout-regre-20261027-w0w4  mock
 8 cases × 3 device classes → 6 bounties
 
   android-chrome-1      5 cases  pool 4.00 USDC  [QA] Acme Shop checkout regression v2.3.0 on Android phone (Chrome) (part 1/2)
@@ -43,9 +43,9 @@ Run acme-shop-checkout-regre-20261007-mklr  mock
 
 Budget 24.00 USDC (2.00 per tester × 2 testers × 6 bounties), plus Gibwork platform fees
 
-Next bugbash publish --confirm
+Next gibreview qa publish --confirm
 
-$ bugbash plan testplan.yaml --mock --show ios-safari-1
+$ gibreview qa plan testplan.yaml --mock --show ios-safari-1
 [QA] Acme Shop checkout regression v2.3.0 on iPhone (Safari) (part 1/2)
 ────────────────────────────────────────────────────────────
 Run 5 manual test cases on a real iPhone (Safari) device and report the result of each one in the format below.
@@ -105,23 +105,23 @@ How to submit
 
 Paste this block into your submission and fill in every line. Pick exactly one of PASS, FAIL or BLOCKED per case. Every FAIL needs a short description and a link to a screenshot or screen recording. Submissions that skip cases or have no evidence for failures are not paid.
 
-BUGBASH RESULT
+QA RESULT
 
-$ bugbash publish --confirm
+$ gibreview qa publish --confirm
   Publishing android-chrome-1…
   Publishing android-chrome-2…
   Publishing ios-safari-1…
   Publishing ios-safari-2…
   Publishing desktop-1…
   Publishing desktop-2…
-✓ android-chrome-1     task 4dc3a5b9-e5c2-4dcb-a5c5-1173236867ea  tx 18c79474bf046ab6fb2f63b32b757f299e91e5c8dd8d
-✓ android-chrome-2     task 515d7ac1-6b12-40a0-ba00-11b4cf6c3277  tx 84bd543b6efc30f573af3398fb1943a51187ca21c791
-✓ ios-safari-1         task 710da18b-5892-473c-8ae3-685ea1cf195d  tx 98b5cdb3488a4f71aeff8a90ea7a58de65dd854e4a82
-✓ ios-safari-2         task 99289523-c0cf-49a3-9ad4-3b0d410b9986  tx 4df6c14bd36a35db84f3dd79ce508feb189c785dd2d9
-✓ desktop-1            task 9442cb00-c672-4351-a4e2-1704c18d09ee  tx 6f34418824fbbb559471f050cd5e3bcd29bc7a15c4f0
-✓ desktop-2            task f7376951-f325-4b5c-b0ab-3445954b568f  tx 42aaa7971061d90696270aa7f062fe670b15ea299f8b
+✓ android-chrome-1     task 71b39a1a-fff3-4776-a615-9750cd987e1f  tx 042029f3300d9130c3480efa03b5403b83225b129cee
+✓ android-chrome-2     task 73fe8410-72ed-471a-b24e-93d88c07b930  tx 5d3f5b34b02b1f327dd9d4814c6cf5c19f9ccb453d16
+✓ ios-safari-1         task 0c145289-ca52-4cc8-a294-6748fe70ffd5  tx b087be3a67ec6e373e228c96e15bd98f9490d2344d23
+✓ ios-safari-2         task 9654bc4a-4053-457e-8028-a0968a0ceb92  tx 8fbb584199066172580aa572252fdb4a9ef968011352
+✓ desktop-1            task 8d9139cf-5c7e-476e-a0cf-b15b27dc8596  tx dce6c05bc50a6e83e72aaa4764cd25aa562c8faa6954
+✓ desktop-2            task 5937d7f2-82e6-45d0-a949-ca2616d04707  tx 2eaf69806608e18e0660175d0eba007be4473fed95bd
 
-$ bugbash collect
+$ gibreview qa collect
   Collecting android-chrome-1…
   Collecting android-chrome-2…
   Collecting ios-safari-1…
@@ -136,46 +136,46 @@ $ bugbash collect
   desktop-1            2 valid  1 incomplete  1 invalid
   desktop-2            2 valid  1 incomplete  1 invalid
 
-Next bugbash triage
+Next gibreview qa triage
 
-$ bugbash triage
-  REJECT @quickcash99    android-chrome-1   No BUGBASH RESULT block found. Please resubmit using the template in the bounty, one line per case.
+$ gibreview qa triage
+  REJECT @quickcash99    android-chrome-1   No QA RESULT block found. Please resubmit using the template in the bounty, one line per case.
   PAY    @ada_qa         android-chrome-1   2.00 USDC  All 5 cases reported with evidence
   PAY    @tunde.tests    android-chrome-1   2.00 USDC  All 5 cases reported with evidence
   REJECT @kemi_bugs      android-chrome-1   Incomplete. Missing results for TC-05. TC-02 is FAIL without an evidence link. Please resubmit with every case filled in and an evidence link for each FAIL.
-  REJECT @quickcash99    android-chrome-2   No BUGBASH RESULT block found. Please resubmit using the template in the bounty, one line per case.
+  REJECT @quickcash99    android-chrome-2   No QA RESULT block found. Please resubmit using the template in the bounty, one line per case.
   PAY    @ada_qa         android-chrome-2   2.00 USDC  All 2 cases reported with evidence
   PAY    @tunde.tests    android-chrome-2   2.00 USDC  All 2 cases reported with evidence
   REJECT @kemi_bugs      android-chrome-2   Incomplete. Missing results for TC-07. Please resubmit with every case filled in and an evidence link for each FAIL.
-  REJECT @quickcash99    ios-safari-1       No BUGBASH RESULT block found. Please resubmit using the template in the bounty, one line per case.
+  REJECT @quickcash99    ios-safari-1       No QA RESULT block found. Please resubmit using the template in the bounty, one line per case.
   PAY    @ada_qa         ios-safari-1       2.00 USDC  All 5 cases reported with evidence
   PAY    @tunde.tests    ios-safari-1       2.00 USDC  All 5 cases reported with evidence
   REJECT @kemi_bugs      ios-safari-1       Incomplete. Missing results for TC-05. Please resubmit with every case filled in and an evidence link for each FAIL.
-  REJECT @quickcash99    ios-safari-2       No BUGBASH RESULT block found. Please resubmit using the template in the bounty, one line per case.
+  REJECT @quickcash99    ios-safari-2       No QA RESULT block found. Please resubmit using the template in the bounty, one line per case.
   PAY    @ada_qa         ios-safari-2       2.00 USDC  All 2 cases reported with evidence
   PAY    @tunde.tests    ios-safari-2       2.00 USDC  All 2 cases reported with evidence
   REJECT @kemi_bugs      ios-safari-2       Incomplete. Missing results for TC-07. Please resubmit with every case filled in and an evidence link for each FAIL.
-  REJECT @quickcash99    desktop-1          No BUGBASH RESULT block found. Please resubmit using the template in the bounty, one line per case.
+  REJECT @quickcash99    desktop-1          No QA RESULT block found. Please resubmit using the template in the bounty, one line per case.
   PAY    @ada_qa         desktop-1          2.00 USDC  All 5 cases reported with evidence
   PAY    @tunde.tests    desktop-1          2.00 USDC  All 5 cases reported with evidence
   REJECT @kemi_bugs      desktop-1          Incomplete. Missing results for TC-05. Please resubmit with every case filled in and an evidence link for each FAIL.
-  REJECT @quickcash99    desktop-2          No BUGBASH RESULT block found. Please resubmit using the template in the bounty, one line per case.
+  REJECT @quickcash99    desktop-2          No QA RESULT block found. Please resubmit using the template in the bounty, one line per case.
   PAY    @ada_qa         desktop-2          2.00 USDC  All 2 cases reported with evidence
   PAY    @tunde.tests    desktop-2          2.00 USDC  All 2 cases reported with evidence
   REJECT @kemi_bugs      desktop-2          Incomplete. Missing results for TC-08. Please resubmit with every case filled in and an evidence link for each FAIL.
 
 Dry run. 12 payouts and 12 rejections planned. Re-run with --apply to execute.
 
-$ bugbash triage --apply
-Run acme-shop-checkout-regre-20261007-qtrm  mock  last collected 2026-10-07T14:12:01.992Z
-  android-chrome-1     live        4 submissions  2/2 paid  4dc3a5b9-e5c2-4dcb-a5c5-1173236867ea
-  android-chrome-2     live        4 submissions  2/2 paid  515d7ac1-6b12-40a0-ba00-11b4cf6c3277
-  ios-safari-1         live        4 submissions  2/2 paid  710da18b-5892-473c-8ae3-685ea1cf195d
-  ios-safari-2         live        4 submissions  2/2 paid  99289523-c0cf-49a3-9ad4-3b0d410b9986
-  desktop-1            live        4 submissions  2/2 paid  9442cb00-c672-4351-a4e2-1704c18d09ee
-  desktop-2            live        4 submissions  2/2 paid  f7376951-f325-4b5c-b0ab-3445954b568f
+$ gibreview qa triage --apply
+Run acme-shop-checkout-regre-20261027-z816  mock  last collected 2026-10-27T19:45:39.264Z
+  android-chrome-1     live        4 submissions  2/2 paid  71b39a1a-fff3-4776-a615-9750cd987e1f
+  android-chrome-2     live        4 submissions  2/2 paid  73fe8410-72ed-471a-b24e-93d88c07b930
+  ios-safari-1         live        4 submissions  2/2 paid  0c145289-ca52-4cc8-a294-6748fe70ffd5
+  ios-safari-2         live        4 submissions  2/2 paid  9654bc4a-4053-457e-8028-a0968a0ceb92
+  desktop-1            live        4 submissions  2/2 paid  8d9139cf-5c7e-476e-a0cf-b15b27dc8596
+  desktop-2            live        4 submissions  2/2 paid  5937d7f2-82e6-45d0-a949-ca2616d04707
 
-$ bugbash report
+$ gibreview qa report
 Release gate FAIL
   • TC-02 [high] fails on Android phone (Chrome) (2 fail / 0 pass)
 
@@ -189,17 +189,17 @@ Release gate FAIL
   PASS      TC-08    Keyboard-only checkout                   desktop:PASS
 
 Paid 24.00 USDC to 12 testers
-✓ bugbash-report/report.md
-✓ bugbash-report/results.csv
-✓ bugbash-report/junit.xml
-✓ bugbash-report/summary.json
+✓ qa-report\report.md
+✓ qa-report\results.csv
+✓ qa-report\junit.xml
+✓ qa-report\summary.json
 
 Exit code 1 (0 pass, 1 release blocked, 2 coverage gaps)
 
-$ head -40 bugbash-report/report.md
+$ head -40 qa-report/report.md
 # QA report · Acme Shop checkout regression v2.3.0
 
-Run `acme-shop-checkout-regre-20261007-qtrm` · environment **mock** · generated 2026-10-07T14:12:03.553Z
+Run `acme-shop-checkout-regre-20261027-z816` · environment **mock** · generated 2026-10-27T19:45:43.430Z
 Build under test https://staging.acme-shop.example
 
 ## Release gate ❌ FAIL, release blocked
@@ -227,15 +227,14 @@ Testers submitted **24** results, 12 valid, 6 incomplete, 6 invalid. 12 approved
 
 Expected Total drops by 10 percent, the Pay button stays enabled and the order is placed
 
-- **FAIL** by @ada_qa (Samsung Galaxy A14, Android 14, Chrome 129). Pay button stays disabled after applying coupon SAVE10, order cannot be placed · evidence https://drive.example.com/bugbash/ada_qa/tc-02.mp4
-- **FAIL** by @tunde.tests (Tecno Spark 20, Android 13, Chrome 128). Pay button stays disabled after applying coupon SAVE10, order cannot be placed · evidence https://drive.example.com/bugbash/tunde.tests/tc-02.mp4
+- **FAIL** by @ada_qa (Samsung Galaxy A14, Android 14, Chrome 129). Pay button stays disabled after applying coupon SAVE10, order cannot be placed · evidence https://drive.example.com/gibreview/ada_qa/tc-02.mp4
+- **FAIL** by @tunde.tests (Tecno Spark 20, Android 13, Chrome 128). Pay button stays disabled after applying coupon SAVE10, order cannot be placed · evidence https://drive.example.com/gibreview/tunde.tests/tc-02.mp4
 
 ### TC-03 Order confirmation email on iPhone (Safari) (disputed)
 
 Expected Confirmation email with the same order number arrives within 2 minutes
 
-- **FAIL** by @ada_qa (iPhone 12, iOS 17.6, Safari). Confirmation email arrived after 9 minutes, expected under 2 · evidence https://drive.example.com/bugbash/ada_qa/tc-03.mp4
+- **FAIL** by @ada_qa (iPhone 12, iOS 17.6, Safari). Confirmation email arrived after 9 minutes, expected under 2 · evidence https://drive.example.com/gibreview/ada_qa/tc-03.mp4
 - **PASS** by @tunde.tests (iPhone SE (2nd gen), iOS 16.7, Safari). email arrived in about 40 seconds
 
 
-Working directory /tmp/bugbash-demo

@@ -3,7 +3,7 @@
  * Generic over bounty types. A preset (QA today; dev and content next) defines the fields, and adds
  * its own rules on top of what this layer reports.
  *
- *   BUGBASH RESULT                 <- header (optional when parsing)
+ *   QA RESULT                 <- header (optional when parsing)
  *   Device: <phone model…>         <- text field
  *   TC-01: PASS | FAIL | BLOCKED…  <- case-result field
  *   END                            <- footer (optional when parsing)

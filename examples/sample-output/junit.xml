@@ -1,111 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuites name="Acme Shop checkout regression" tests="21" failures="2" skipped="0">
   <testsuite name="Android phone (Chrome)" tests="7" failures="1" skipped="0">
-    <testcase classname="bugbash.android-chrome" name="TC-01 Guest checkout with card">
+    <testcase classname="gibreview.qa.android-chrome" name="TC-01 Guest checkout with card">
       <properties><property name="priority" value="high"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (Samsung Galaxy A14, Android 14, Chrome 129)
 PASS by @tunde.tests (Tecno Spark 20, Android 13, Chrome 128)</system-out>
     </testcase>
-    <testcase classname="bugbash.android-chrome" name="TC-02 Apply a coupon at checkout">
+    <testcase classname="gibreview.qa.android-chrome" name="TC-02 Apply a coupon at checkout">
       <properties><property name="priority" value="high"/><property name="observations" value="2"/></properties>
-      <failure message="Failed on Android phone (Chrome) (2 fail, 0 pass)">FAIL by @ada_qa (Samsung Galaxy A14, Android 14, Chrome 129): Pay button stays disabled after applying coupon SAVE10, order cannot be placed [https://drive.example.com/bugbash/ada_qa/tc-02.mp4]
-FAIL by @tunde.tests (Tecno Spark 20, Android 13, Chrome 128): Pay button stays disabled after applying coupon SAVE10, order cannot be placed [https://drive.example.com/bugbash/tunde.tests/tc-02.mp4]</failure>
+      <failure message="Failed on Android phone (Chrome) (2 fail, 0 pass)">FAIL by @ada_qa (Samsung Galaxy A14, Android 14, Chrome 129): Pay button stays disabled after applying coupon SAVE10, order cannot be placed [https://drive.example.com/gibreview/ada_qa/tc-02.mp4]
+FAIL by @tunde.tests (Tecno Spark 20, Android 13, Chrome 128): Pay button stays disabled after applying coupon SAVE10, order cannot be placed [https://drive.example.com/gibreview/tunde.tests/tc-02.mp4]</failure>
     </testcase>
-    <testcase classname="bugbash.android-chrome" name="TC-03 Order confirmation email">
+    <testcase classname="gibreview.qa.android-chrome" name="TC-03 Order confirmation email">
       <properties><property name="priority" value="medium"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (Samsung Galaxy A14, Android 14, Chrome 129)
 PASS by @tunde.tests (Tecno Spark 20, Android 13, Chrome 128)</system-out>
     </testcase>
-    <testcase classname="bugbash.android-chrome" name="TC-04 Delivery address validation">
+    <testcase classname="gibreview.qa.android-chrome" name="TC-04 Delivery address validation">
       <properties><property name="priority" value="medium"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (Samsung Galaxy A14, Android 14, Chrome 129)
 PASS by @tunde.tests (Tecno Spark 20, Android 13, Chrome 128)</system-out>
     </testcase>
-    <testcase classname="bugbash.android-chrome" name="TC-05 Cart survives a page refresh">
+    <testcase classname="gibreview.qa.android-chrome" name="TC-05 Cart survives a page refresh">
       <properties><property name="priority" value="low"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (Samsung Galaxy A14, Android 14, Chrome 129)
 BLOCKED by @tunde.tests (Tecno Spark 20, Android 13, Chrome 128): staging returned 502 for 10 minutes, could not finish</system-out>
     </testcase>
-    <testcase classname="bugbash.android-chrome" name="TC-06 Pay with bank transfer">
+    <testcase classname="gibreview.qa.android-chrome" name="TC-06 Pay with bank transfer">
       <properties><property name="priority" value="high"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (Samsung Galaxy A14, Android 14, Chrome 129)
 PASS by @tunde.tests (Tecno Spark 20, Android 13, Chrome 128)</system-out>
     </testcase>
-    <testcase classname="bugbash.android-chrome" name="TC-07 Checkout on a slow 3G connection">
+    <testcase classname="gibreview.qa.android-chrome" name="TC-07 Checkout on a slow 3G connection">
       <properties><property name="priority" value="medium"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (Samsung Galaxy A14, Android 14, Chrome 129)
 BLOCKED by @tunde.tests (Tecno Spark 20, Android 13, Chrome 128): staging returned 502 for 10 minutes, could not finish</system-out>
     </testcase>
   </testsuite>
   <testsuite name="iPhone (Safari)" tests="7" failures="1" skipped="0">
-    <testcase classname="bugbash.ios-safari" name="TC-01 Guest checkout with card">
+    <testcase classname="gibreview.qa.ios-safari" name="TC-01 Guest checkout with card">
       <properties><property name="priority" value="high"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (iPhone 12, iOS 17.6, Safari)
 PASS by @tunde.tests (iPhone SE (2nd gen), iOS 16.7, Safari)</system-out>
     </testcase>
-    <testcase classname="bugbash.ios-safari" name="TC-02 Apply a coupon at checkout">
+    <testcase classname="gibreview.qa.ios-safari" name="TC-02 Apply a coupon at checkout">
       <properties><property name="priority" value="high"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (iPhone 12, iOS 17.6, Safari)
 PASS by @tunde.tests (iPhone SE (2nd gen), iOS 16.7, Safari)</system-out>
     </testcase>
-    <testcase classname="bugbash.ios-safari" name="TC-03 Order confirmation email">
+    <testcase classname="gibreview.qa.ios-safari" name="TC-03 Order confirmation email">
       <properties><property name="priority" value="medium"/><property name="observations" value="2"/></properties>
-      <failure message="Disputed on iPhone (Safari) (1 fail, 1 pass)">FAIL by @ada_qa (iPhone 12, iOS 17.6, Safari): Confirmation email arrived after 9 minutes, expected under 2 [https://drive.example.com/bugbash/ada_qa/tc-03.mp4]
+      <failure message="Disputed on iPhone (Safari) (1 fail, 1 pass)">FAIL by @ada_qa (iPhone 12, iOS 17.6, Safari): Confirmation email arrived after 9 minutes, expected under 2 [https://drive.example.com/gibreview/ada_qa/tc-03.mp4]
 PASS by @tunde.tests (iPhone SE (2nd gen), iOS 16.7, Safari): email arrived in about 40 seconds</failure>
     </testcase>
-    <testcase classname="bugbash.ios-safari" name="TC-04 Delivery address validation">
+    <testcase classname="gibreview.qa.ios-safari" name="TC-04 Delivery address validation">
       <properties><property name="priority" value="medium"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (iPhone 12, iOS 17.6, Safari)
 PASS by @tunde.tests (iPhone SE (2nd gen), iOS 16.7, Safari)</system-out>
     </testcase>
-    <testcase classname="bugbash.ios-safari" name="TC-05 Cart survives a page refresh">
+    <testcase classname="gibreview.qa.ios-safari" name="TC-05 Cart survives a page refresh">
       <properties><property name="priority" value="low"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (iPhone 12, iOS 17.6, Safari)
 BLOCKED by @tunde.tests (iPhone SE (2nd gen), iOS 16.7, Safari): staging returned 502 for 10 minutes, could not finish</system-out>
     </testcase>
-    <testcase classname="bugbash.ios-safari" name="TC-06 Pay with bank transfer">
+    <testcase classname="gibreview.qa.ios-safari" name="TC-06 Pay with bank transfer">
       <properties><property name="priority" value="high"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (iPhone 12, iOS 17.6, Safari)
 PASS by @tunde.tests (iPhone SE (2nd gen), iOS 16.7, Safari)</system-out>
     </testcase>
-    <testcase classname="bugbash.ios-safari" name="TC-07 Checkout on a slow 3G connection">
+    <testcase classname="gibreview.qa.ios-safari" name="TC-07 Checkout on a slow 3G connection">
       <properties><property name="priority" value="medium"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (iPhone 12, iOS 17.6, Safari)
 BLOCKED by @tunde.tests (iPhone SE (2nd gen), iOS 16.7, Safari): staging returned 502 for 10 minutes, could not finish</system-out>
     </testcase>
   </testsuite>
   <testsuite name="Desktop browser" tests="7" failures="0" skipped="0">
-    <testcase classname="bugbash.desktop" name="TC-01 Guest checkout with card">
+    <testcase classname="gibreview.qa.desktop" name="TC-01 Guest checkout with card">
       <properties><property name="priority" value="high"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (ThinkPad T480, Windows 11, Chrome 129)
 PASS by @tunde.tests (MacBook Air M1, macOS 14, Firefox 131)</system-out>
     </testcase>
-    <testcase classname="bugbash.desktop" name="TC-02 Apply a coupon at checkout">
+    <testcase classname="gibreview.qa.desktop" name="TC-02 Apply a coupon at checkout">
       <properties><property name="priority" value="high"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (ThinkPad T480, Windows 11, Chrome 129)
 PASS by @tunde.tests (MacBook Air M1, macOS 14, Firefox 131)</system-out>
     </testcase>
-    <testcase classname="bugbash.desktop" name="TC-03 Order confirmation email">
+    <testcase classname="gibreview.qa.desktop" name="TC-03 Order confirmation email">
       <properties><property name="priority" value="medium"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (ThinkPad T480, Windows 11, Chrome 129)
 PASS by @tunde.tests (MacBook Air M1, macOS 14, Firefox 131)</system-out>
     </testcase>
-    <testcase classname="bugbash.desktop" name="TC-04 Delivery address validation">
+    <testcase classname="gibreview.qa.desktop" name="TC-04 Delivery address validation">
       <properties><property name="priority" value="medium"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (ThinkPad T480, Windows 11, Chrome 129)
 PASS by @tunde.tests (MacBook Air M1, macOS 14, Firefox 131)</system-out>
     </testcase>
-    <testcase classname="bugbash.desktop" name="TC-05 Cart survives a page refresh">
+    <testcase classname="gibreview.qa.desktop" name="TC-05 Cart survives a page refresh">
       <properties><property name="priority" value="low"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (ThinkPad T480, Windows 11, Chrome 129)
 BLOCKED by @tunde.tests (MacBook Air M1, macOS 14, Firefox 131): staging returned 502 for 10 minutes, could not finish</system-out>
     </testcase>
-    <testcase classname="bugbash.desktop" name="TC-06 Pay with bank transfer">
+    <testcase classname="gibreview.qa.desktop" name="TC-06 Pay with bank transfer">
       <properties><property name="priority" value="high"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (ThinkPad T480, Windows 11, Chrome 129)
 PASS by @tunde.tests (MacBook Air M1, macOS 14, Firefox 131)</system-out>
     </testcase>
-    <testcase classname="bugbash.desktop" name="TC-08 Keyboard-only checkout">
+    <testcase classname="gibreview.qa.desktop" name="TC-08 Keyboard-only checkout">
       <properties><property name="priority" value="low"/><property name="observations" value="2"/></properties>
       <system-out>PASS by @ada_qa (ThinkPad T480, Windows 11, Chrome 129)
 BLOCKED by @tunde.tests (MacBook Air M1, macOS 14, Firefox 131): staging returned 502 for 10 minutes, could not finish</system-out>

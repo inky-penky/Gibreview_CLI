@@ -42,8 +42,8 @@ test('invalid plans report every issue', () => {
 });
 
 test('full mock run blocks the release on the reproduced high-priority failure', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'bugbash-test-'));
-  const store = new Store(join(dir, '.bugbash'));
+  const dir = await mkdtemp(join(tmpdir(), 'gibreview-test-'));
+  const store = new Store(join(dir, '.gibreview/qa'));
   const { run } = await planRun(examplePlan, store, 'mock');
   const client = createClient({ environment: 'mock', stateDir: store.dir });
 

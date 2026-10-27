@@ -6,7 +6,7 @@ const ids = ['TC-01', 'TC-02', 'TC-03'];
 
 test('parses a clean plain-text result block', () => {
   const p = parseSubmission(
-    ['BUGBASH RESULT', 'Device: Pixel 7, Android 14, Chrome 129', 'TC-01: PASS', 'TC-02: FAIL - Pay button greyed out - https://x.example/v.mp4', 'TC-03: BLOCKED - staging down', 'END'].join('\n'),
+    ['QA RESULT', 'Device: Pixel 7, Android 14, Chrome 129', 'TC-01: PASS', 'TC-02: FAIL - Pay button greyed out - https://x.example/v.mp4', 'TC-03: BLOCKED - staging down', 'END'].join('\n'),
     ids,
   );
   assert.equal(p.verdict, 'valid');

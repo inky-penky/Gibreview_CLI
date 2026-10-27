@@ -5,10 +5,10 @@ import type { CreateTaskInput, ApproveSubmissionInput } from '@gibwork/sdk';
 import { htmlToText } from './content.js';
 
 /**
- * Offline stand-in for the Gibwork SDK, persisted to .bugbash/mock-ledger.json.
+ * Offline stand-in for the Gibwork SDK, persisted to .gibreview/qa/mock-ledger.json.
  * It simulates a small crowd of testers answering each published bounty so the whole
  * plan → publish → collect → triage → report loop can be reviewed without a funded wallet.
- * Shapes mirror @gibwork/sdk 0.2.x responses for the fields BugBash reads.
+ * Shapes mirror @gibwork/sdk 0.2.x responses for the fields gibreview reads.
  */
 
 interface MockTask {
@@ -257,7 +257,7 @@ function simulateTesters(task: MockTask): MockSubmission[] {
   const devices = DEVICES.find(([re]) => re.test(task.title))![1];
   const base = new Date(task.createdAt).getTime();
   const at = (mins: number) => new Date(base + mins * 60_000).toISOString();
-  const evidence = (who: string, id: string) => `https://drive.example.com/bugbash/${who}/${id.toLowerCase()}.mp4`;
+  const evidence = (who: string, id: string) => `https://drive.example.com/gibreview/${who}/${id.toLowerCase()}.mp4`;
 
   // The first bounty reproduces a real defect; the third has testers disagreeing (a flaky case).
   const failing = task.index === 0 && caseIds.length > 1 ? caseIds[1] : null;
@@ -271,7 +271,7 @@ function simulateTesters(task: MockTask): MockSubmission[] {
   };
 
   const block = (who: string, i: number, ids: string[], extra: (id: string) => string | null = () => null) =>
-    ['BUGBASH RESULT', `Device: ${devices[i % devices.length]}`, ...ids.map((id) => extra(id) ?? line(id, who, i)), 'END'].join('\n');
+    ['QA RESULT', `Device: ${devices[i % devices.length]}`, ...ids.map((id) => extra(id) ?? line(id, who, i)), 'END'].join('\n');
 
   const subs: Array<[string, string, number]> = [
     [TESTERS[0], block(TESTERS[0], 0, caseIds), 18],

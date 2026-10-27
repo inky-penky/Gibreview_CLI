@@ -3,9 +3,10 @@ dist/
 .env
 .env.*
 !.env.example
-.bugbash/
-bugbash-report/
-*.tmp
 .gibreview/
+qa-report/
+*.tmp
 review-report/
 *.description.txt
+# state from before the rename (BugBash); kept local
+.bugbash/

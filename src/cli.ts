@@ -21,10 +21,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 const program = new Command();
 program
-  .name('bugbash')
+  .name('gibreview qa')
   .description('Crowdsourced manual QA from your terminal, paid through Gibwork bounties.')
   .version('0.1.0')
-  .option('--dir <path>', 'where run state lives', '.bugbash')
+  .option('--dir <path>', 'where run state lives', '.gibreview/qa')
   .option('--run <id>', 'run id (defaults to the most recent run)');
 
 const store = () => new Store(resolve(program.opts().dir));
@@ -46,7 +46,7 @@ program
   .action(async (file: string) => {
     if (existsSync(file)) throw new Error(`${file} already exists`);
     await copyFile(join(here, '..', 'examples', 'checkout-regression.yaml'), file);
-    console.log(`${c.green('✓')} Wrote ${file}. Edit the cases and devices, then run ${c.bold(`bugbash plan ${file}`)}`);
+    console.log(`${c.green('✓')} Wrote ${file}. Edit the cases and devices, then run ${c.bold(`gibreview qa plan ${file}`)}`);
   });
 
 program
@@ -77,7 +77,7 @@ program
       console.log(`  ${tc.id}  ${pri}  ${tc.title}${tc.reviewNote ? c.cyan('  • needs review') : ''}`);
     }
     res.warnings.forEach((w) => console.log(c.yellow(`\n! ${w}`)));
-    console.log(`\n${c.green('✓')} Wrote ${opts.out} as a draft. Review it, delete ${c.bold('draft: true')}, then run ${c.bold(`bugbash plan ${opts.out}`)}`);
+    console.log(`\n${c.green('✓')} Wrote ${opts.out} as a draft. Review it, delete ${c.bold('draft: true')}, then run ${c.bold(`gibreview qa plan ${opts.out}`)}`);
   });
 
 program
@@ -107,7 +107,7 @@ program
     for (const tc of res.plan.cases.slice(0, 15)) console.log(`  ${tc.id.padEnd(10)} ${tc.priority.padEnd(6)}  ${tc.title.slice(0, 60)}  ${c.dim(`${tc.steps.length} step${tc.steps.length === 1 ? "" : "s"}${tc.devices ? ` · ${tc.devices.join(', ')}` : ''}`)}`);
     if (res.plan.cases.length > 15) console.log(c.dim(`  … and ${res.plan.cases.length - 15} more`));
     res.csv.warnings.forEach((w) => console.log(c.yellow(`! ${w}`)));
-    console.log(`\n${c.green('✓')} Wrote ${opts.out}. Check it, then run ${c.bold(`bugbash plan ${opts.out}`)}`);
+    console.log(`\n${c.green('✓')} Wrote ${opts.out}. Check it, then run ${c.bold(`gibreview qa plan ${opts.out}`)}`);
   });
 
 program
@@ -130,7 +130,7 @@ program
       if (!b) throw new Error(`No batch "${opts.show}"`);
       console.log(`\n${c.bold(b.title)}\n${'─'.repeat(60)}\n${htmlToText(b.content)}\n`);
     }
-    console.log(`\nNext ${c.bold('bugbash publish --confirm')}`);
+    console.log(`\nNext ${c.bold('gibreview qa publish --confirm')}`);
   });
 
 program
@@ -178,7 +178,7 @@ program
     for (const [id, b] of Object.entries(res.byBatch)) {
       console.log(`  ${id.padEnd(20)} ${c.green(`${b.valid} valid`)}  ${c.yellow(`${b.incomplete} incomplete`)}  ${c.red(`${b.invalid} invalid`)}`);
     }
-    console.log(`\nNext ${c.bold('bugbash triage')}`);
+    console.log(`\nNext ${c.bold('gibreview qa triage')}`);
   }));
 
 program
@@ -208,7 +208,7 @@ program
 program
   .command('report')
   .description('write the QA report and exit with the release gate result (0 pass, 1 fail, 2 incomplete)')
-  .option('--out <dir>', 'output directory', 'bugbash-report')
+  .option('--out <dir>', 'output directory', 'qa-report')
   .option('--format <list>', 'comma-separated: md,csv,junit,json', 'md,csv,junit,json')
   .option('--no-gate', 'always exit 0')
   .action(async (opts: { out: string; format: string; gate: boolean }) => {

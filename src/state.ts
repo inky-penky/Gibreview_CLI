@@ -16,7 +16,7 @@ export interface BatchState extends Batch {
   refundedAt?: string;
 }
 
-/** 'other' is a Gibwork status BugBash does not recognise. It fills a slot, is never auto-triaged and needs a human look. */
+/** 'other' is a Gibwork status gibreview does not recognise. It fills a slot, is never auto-triaged and needs a human look. */
 export type ReviewStatus = 'pending' | 'approved' | 'rejected' | 'other';
 
 export interface SubmissionState {
@@ -52,8 +52,8 @@ export interface RunState {
 export class Store<S extends { runId: string } = RunState> {
   constructor(
     readonly dir: string,
-    /** Shown when there is no run yet, e.g. 'Start one with "bugbash plan <testplan.yaml>".' */
-    private readonly startHint = 'Start one with "bugbash plan <testplan.yaml>".',
+    /** Shown when there is no run yet, e.g. 'Start one with "gibreview qa plan <testplan.yaml>".' */
+    private readonly startHint = 'Start one with "gibreview qa plan <testplan.yaml>".',
   ) {}
 
   private runPath(runId: string) {
@@ -104,7 +104,7 @@ export class Store<S extends { runId: string } = RunState> {
         const holder = await readFile(path, 'utf8').then((t) => JSON.parse(t) as { pid: number; at: string }, () => null);
         if (!holder || processAlive(holder.pid)) {
           throw new Error(
-            `Run ${runId} is busy: another bugbash process${holder ? ` (pid ${holder.pid}, since ${holder.at})` : ''} is changing it. ` +
+            `Run ${runId} is busy: another gibreview process${holder ? ` (pid ${holder.pid}, since ${holder.at})` : ''} is changing it. ` +
               `Wait for it to finish. If that process is gone, delete ${path}.`,
           );
         }

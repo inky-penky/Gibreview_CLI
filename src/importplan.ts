@@ -47,10 +47,10 @@ export async function importCsvPlan(opts: ImportOptions): Promise<ImportResult> 
   const plan = validatePlan({ ...base, cases: csv.cases });
 
   const header = [
-    `# Imported by "bugbash import" from ${basename(opts.csvPath)} (${csv.cases.length} cases)`,
+    `# Imported by "gibreview qa import" from ${basename(opts.csvPath)} (${csv.cases.length} cases)`,
     opts.link
-      ? `# Cases are read from ${casesFile} every time you run "bugbash plan", so keep editing the spreadsheet.`
-      : '# Cases were copied in. Re-run "bugbash import" or use --link to keep the spreadsheet as the source of truth.',
+      ? `# Cases are read from ${casesFile} every time you run "gibreview qa plan", so keep editing the spreadsheet.`
+      : '# Cases were copied in. Re-run "gibreview qa import" or use --link to keep the spreadsheet as the source of truth.',
     '# Check the reward, build notes and devices below before publishing.',
     '',
   ].join('\n');

@@ -1,5 +1,5 @@
 {
-  "runId": "acme-shop-checkout-regre-20261007-28nj",
+  "runId": "acme-shop-checkout-regre-20261027-z816",
   "gate": {
     "verdict": "FAIL",
     "reasons": [
@@ -13,6 +13,8 @@
     "invalid": 6,
     "approved": 12,
     "rejected": 12,
+    "awaitingTriage": 0,
+    "needsAttention": 0,
     "paid": "24.00"
   },
   "cases": [

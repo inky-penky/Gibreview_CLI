@@ -51,11 +51,11 @@ export async function aiCases(page: PageModel, baseline: DraftCase[], opts: AiOp
     .filter(Boolean)
     .join('\n\n');
 
-  const res = await fetch(opts.endpoint ?? process.env.BUGBASH_AI_URL ?? 'https://api.anthropic.com/v1/messages', {
+  const res = await fetch(opts.endpoint ?? process.env.GIBREVIEW_AI_URL ?? 'https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': opts.apiKey, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({
-      model: opts.model ?? process.env.BUGBASH_AI_MODEL ?? DEFAULT_AI_MODEL,
+      model: opts.model ?? process.env.GIBREVIEW_AI_MODEL ?? DEFAULT_AI_MODEL,
       max_tokens: 8000,
       system: SYSTEM,
       messages: [{ role: 'user', content: user }],

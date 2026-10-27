@@ -46,11 +46,11 @@ test('rule-based writer drafts a schema-valid plan without an API key', async ()
 });
 
 test('generated drafts are refused until a person removes draft: true', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'bugbash-gen-'));
+  const dir = await mkdtemp(join(tmpdir(), 'gibreview-gen-'));
   const res = await generatePlan({ url: URL_, htmlFile: fixture });
   const file = join(dir, 'testplan.yaml');
   await writePlanFile(file, res.yaml);
-  const store = new Store(join(dir, '.bugbash'));
+  const store = new Store(join(dir, '.gibreview/qa'));
   await assert.rejects(planRun(file, store, 'mock'), (e: unknown) => e instanceof PlanError && /draft/.test(e.message));
   await writeFile(file, (await readFile(file, 'utf8')).replace('draft: true\n', ''));
   const { run } = await planRun(file, store, 'mock');
@@ -70,12 +70,12 @@ async function withStubAi(reply: unknown, fn: () => Promise<void>) {
   });
   await new Promise<void>((r) => server.listen(0, r));
   const port = (server.address() as { port: number }).port;
-  process.env.BUGBASH_AI_URL = `http://127.0.0.1:${port}/v1/messages`;
+  process.env.GIBREVIEW_AI_URL = `http://127.0.0.1:${port}/v1/messages`;
   process.env.ANTHROPIC_API_KEY = 'test-key';
   try {
     await fn();
   } finally {
-    delete process.env.BUGBASH_AI_URL;
+    delete process.env.GIBREVIEW_AI_URL;
     delete process.env.ANTHROPIC_API_KEY;
     server.close();
   }

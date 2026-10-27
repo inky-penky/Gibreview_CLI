@@ -1,18 +1,19 @@
 {
-  "name": "gibwork-bugbash",
+  "name": "gibreview",
   "version": "0.1.0",
-  "description": "Crowdsourced manual QA from your terminal. Turn a test plan into Gibwork bounties, collect tester results, and ship a release-gate report.",
-  "main": "dist/index.js",
+  "description": "Review Gibwork bounty submissions: automated checks, a ranked shortlist, a reason for every decision, and payouts or a website checklist. Includes a QA preset for crowdsourced manual testing.",
   "scripts": {
     "build": "tsc",
     "test": "npm run build && node --test dist/test/*.test.js",
-    "start": "node dist/cli.js",
+    "start": "node dist/review/cli.js",
     "mcp": "node dist/mcp.js",
     "demo": "bash examples/demo.sh",
     "prepare": "tsc"
   },
   "keywords": [
     "gibwork",
+    "bounty",
+    "review",
     "qa",
     "testing",
     "mcp",
@@ -44,9 +45,8 @@
   },
   "type": "module",
   "bin": {
-    "bugbash": "dist/cli.js",
-    "bugbash-mcp": "dist/mcp.js",
-    "gibreview": "dist/review/cli.js"
+    "gibreview": "dist/review/cli.js",
+    "gibreview-mcp": "dist/mcp.js"
   },
   "engines": {
     "node": ">=22"

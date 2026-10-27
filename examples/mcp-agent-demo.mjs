@@ -1,4 +1,4 @@
-// Drives the BugBash MCP server exactly like an AI agent would, over stdio.
+// Drives the gibreview MCP server exactly like an AI agent would, over stdio.
 // Usage: node examples/mcp-agent-demo.mjs [path/to/testplan.yaml]
 // Runs in mock mode, so no wallet or funds are needed.
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -10,13 +10,13 @@ import { tmpdir } from 'node:os';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const plan = resolve(process.argv[2] ?? join(root, 'examples', 'checkout-regression.yaml'));
-const work = mkdtempSync(join(tmpdir(), 'bugbash-mcp-'));
+const work = mkdtempSync(join(tmpdir(), 'gibreview-mcp-'));
 
 const transport = new StdioClientTransport({
   command: process.execPath,
   args: [join(root, 'dist', 'mcp.js')],
   cwd: work,
-  env: { ...process.env, BUGBASH_DIR: join(work, '.bugbash') },
+  env: { ...process.env, GIBREVIEW_DIR: join(work, '.gibreview/qa') },
 });
 const client = new Client({ name: 'demo-agent', version: '1.0.0' });
 await client.connect(transport);
@@ -32,22 +32,22 @@ const call = async (name, args = {}) => {
 const { tools } = await client.listTools();
 console.log(`Connected. Tools: ${tools.map((t) => t.name).join(', ')}`);
 
-const planned = await call('bugbash_plan', { planPath: plan, environment: 'mock' });
+const planned = await call('qa_plan', { planPath: plan, environment: 'mock' });
 if (!planned) {
-  // e.g. the plan is over BUGBASH_MCP_MAX_BUDGET: an agent stops here and reports back.
+  // e.g. the plan is over GIBREVIEW_MCP_MAX_BUDGET: an agent stops here and reports back.
   console.log('\nAgent summary: the run cannot go ahead, see the error above.');
   await client.close();
   process.exit(1);
 }
-await call('bugbash_publish', {}); // refused: the agent must show the cost and get a human yes first
-await call('bugbash_publish', { confirmCode: 'publish-0.01-USDC-000000' }); // refused: code does not match this amount
+await call('qa_publish', {}); // refused: the agent must show the cost and get a human yes first
+await call('qa_publish', { confirmCode: 'publish-0.01-USDC-000000' }); // refused: code does not match this amount
 console.log(`\n(agent shows the user ${planned.totalBudget} ${planned.symbol} and the user approves)`);
-await call('bugbash_publish', { confirmCode: planned.confirmCode });
-await call('bugbash_collect');
-const preview = await call('bugbash_triage', {}); // dry run: payouts, rejections and a pay code
+await call('qa_publish', { confirmCode: planned.confirmCode });
+await call('qa_collect');
+const preview = await call('qa_triage', {}); // dry run: payouts, rejections and a pay code
 console.log(`\n(agent shows the user ${preview.payTotal} in payouts and the user approves)`);
-await call('bugbash_triage', { apply: true, confirmCode: preview.confirmCode });
-const report = await call('bugbash_report', { outDir: join(work, 'report') });
+await call('qa_triage', { apply: true, confirmCode: preview.confirmCode });
+const report = await call('qa_report', { outDir: join(work, 'report') });
 
 console.log(`\nAgent summary: release gate is ${report.gate.verdict}. ${report.gate.reasons.join('; ')}`);
 console.log(`Reports in ${join(work, 'report')}`);

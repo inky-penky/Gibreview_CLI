@@ -345,6 +345,11 @@ program
     for (const ch of s.checks) console.log(`  ${icon[ch.status]} ${ch.id.padEnd(10)} ${ch.message}${ch.status === 'fail' && !ch.fixable ? c.red('  (disqualifies)') : ''}`);
   });
 
+// The QA preset (test plan -> tester bounties -> release-gate report) is its own command set.
+program.command('qa', 'crowdsourced manual QA: test plan to tester bounties to a release-gate report (gibreview qa --help)', {
+  executableFile: join(here, '..', 'cli.js'),
+});
+
 program.parseAsync().catch((err) => {
   if (err instanceof PlanError) {
     console.error(c.red(`✗ ${err.message}`));

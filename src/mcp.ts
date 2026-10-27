@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
@@ -19,14 +19,16 @@ loadEnvFiles();
  *
  * Money-moving tools (publish, triage apply) need a confirmCode tied to the exact amount and action,
  * which the agent gets alongside the cost it must show the user. The operator controls the rest from
- * the server's environment, which an agent cannot change: BUGBASH_MCP_ALLOW_PRODUCTION=1 to spend on
- * production, and BUGBASH_MCP_MAX_BUDGET to cap what any run may put into escrow.
+ * the server's environment, which an agent cannot change: GIBREVIEW_MCP_ALLOW_PRODUCTION=1 to spend on
+ * production, and GIBREVIEW_MCP_MAX_BUDGET to cap what any run may put into escrow.
  */
 
-const store = new Store(resolve(process.env.BUGBASH_DIR ?? '.bugbash'));
+/** GIBREVIEW_DIR is the state root (default .gibreview); review runs live in it, QA runs in its qa folder. */
+const stateRoot = resolve(process.env.GIBREVIEW_DIR ?? '.gibreview');
+const store = new Store(join(stateRoot, 'qa'));
 const guard: GuardConfig = {
-  allowProduction: process.env.BUGBASH_MCP_ALLOW_PRODUCTION === '1',
-  maxBudget: process.env.BUGBASH_MCP_MAX_BUDGET,
+  allowProduction: process.env.GIBREVIEW_MCP_ALLOW_PRODUCTION === '1',
+  maxBudget: process.env.GIBREVIEW_MCP_MAX_BUDGET,
 };
 
 const ok = (data: unknown) => ({ content: [{ type: 'text' as const, text: typeof data === 'string' ? data : JSON.stringify(data, null, 2) }] });
@@ -35,7 +37,7 @@ const fail = (err: unknown) => ({
   content: [{ type: 'text' as const, text: err instanceof PlanError ? `${err.message}\n${err.issues.map((i) => `- ${i}`).join('\n')}` : describeError(err) }],
 });
 
-const server = new McpServer({ name: 'gibwork-bugbash', version: '0.1.0' });
+const server = new McpServer({ name: 'gibreview', version: '0.1.0' });
 const runId = z.string().optional().describe('Run id. Defaults to the most recent run.');
 const confirmCodeArg = z
   .string()
@@ -43,11 +45,11 @@ const confirmCodeArg = z
   .describe('Code from the cost preview. Pass it only after the user has seen that amount and approved it.');
 
 server.registerTool(
-  'bugbash_generate_plan',
+  'qa_generate_plan',
   {
     title: 'Draft a test plan from a URL',
     description:
-      'Read a feature page and draft manual test cases as a YAML test plan marked draft: true. The user must review it and remove draft: true before bugbash_plan accepts it. Show the user the cases and any review notes.',
+      'Read a feature page and draft manual test cases as a YAML test plan marked draft: true. The user must review it and remove draft: true before qa_plan accepts it. Show the user the cases and any review notes.',
     inputSchema: {
       url: z.string().url(),
       outPath: z.string().default('testplan.yaml'),
@@ -68,7 +70,7 @@ server.registerTool(
         readVia: res.page.renderedWith,
         warnings: res.warnings,
         cases: res.plan.cases.map((c) => ({ id: c.id, priority: c.priority, title: c.title, expected: c.expected, reviewNote: c.reviewNote })),
-        next: 'Ask the user to review the file, resolve review notes and delete "draft: true", then call bugbash_plan.',
+        next: 'Ask the user to review the file, resolve review notes and delete "draft: true", then call qa_plan.',
       });
     } catch (e) {
       return fail(e);
@@ -77,11 +79,11 @@ server.registerTool(
 );
 
 server.registerTool(
-  'bugbash_import_csv',
+  'qa_import_csv',
   {
     title: 'Import test cases from CSV',
     description:
-      'Convert a CSV/TSV of test cases (Excel, Google Sheets, TestRail, Zephyr, Xray exports) into a BugBash test plan. Columns are matched by name and priorities normalised. Returns the column mapping and any warnings to show the user.',
+      'Convert a CSV/TSV of test cases (Excel, Google Sheets, TestRail, Zephyr, Xray exports) into a gibreview test plan. Columns are matched by name and priorities normalised. Returns the column mapping and any warnings to show the user.',
     inputSchema: {
       csvPath: z.string(),
       url: z.string().url().describe('Build or staging URL testers should open'),
@@ -103,7 +105,7 @@ server.registerTool(
         ignoredColumns: res.csv.ignoredColumns,
         warnings: res.csv.warnings,
         cases: res.plan.cases.map((c) => ({ id: c.id, priority: c.priority, title: c.title, steps: c.steps.length })),
-        next: 'Show the user the mapping and warnings, then call bugbash_plan with this file.',
+        next: 'Show the user the mapping and warnings, then call qa_plan with this file.',
       });
     } catch (e) {
       return fail(e);
@@ -112,7 +114,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  'bugbash_plan',
+  'qa_plan',
   {
     title: 'Plan a crowd QA run',
     description:
@@ -131,7 +133,7 @@ server.registerTool(
         ...summary,
         warnings,
         confirmCode: confirmCode(run, spend),
-        next: `Show the user the budget (${summary.totalBudget} ${summary.symbol} plus Gibwork fees, on ${environment}) and ask them to approve it. Only after they say yes, call bugbash_publish with this confirmCode.`,
+        next: `Show the user the budget (${summary.totalBudget} ${summary.symbol} plus Gibwork fees, on ${environment}) and ask them to approve it. Only after they say yes, call qa_publish with this confirmCode.`,
       });
     } catch (e) {
       return fail(e);
@@ -140,7 +142,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  'bugbash_preview_bounty',
+  'qa_preview_bounty',
   {
     title: 'Preview one bounty',
     description: 'Return the exact text testers will see for one batch, including the result template.',
@@ -159,7 +161,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  'bugbash_publish',
+  'qa_publish',
   {
     title: 'Publish and fund bounties',
     description:
@@ -182,7 +184,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  'bugbash_status',
+  'qa_status',
   {
     title: 'Run status',
     description: 'Per-bounty publish state, submission counts and how many testers have been paid.',
@@ -216,7 +218,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  'bugbash_collect',
+  'qa_collect',
   {
     title: 'Collect tester results',
     description: 'Fetch submissions for every published bounty and parse each tester result block (valid, incomplete or invalid).',
@@ -232,7 +234,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  'bugbash_triage',
+  'qa_triage',
   {
     title: 'Pay or reject submissions',
     description:
@@ -269,11 +271,11 @@ server.registerTool(
 );
 
 server.registerTool(
-  'bugbash_report',
+  'qa_report',
   {
     title: 'Release gate report',
     description: 'Aggregate results into a device × case matrix and a release verdict (PASS, FAIL, INCOMPLETE). Writes report.md, results.csv, junit.xml and summary.json.',
-    inputSchema: { outDir: z.string().default('bugbash-report'), runId },
+    inputSchema: { outDir: z.string().default('qa-report'), runId },
   },
   async ({ outDir, runId: id }) => {
     try {
@@ -310,7 +312,7 @@ server.registerTool(
     try {
       const { precheck } = await import('./review/precheck.js');
       const { mockFetch } = await import('./review/mockweb.js');
-      const client = createClient({ environment, stateDir: resolve(process.env.GIBREVIEW_DIR ?? '.gibreview') });
+      const client = createClient({ environment, stateDir: stateRoot });
       const task = (await client.tasks.get(taskId)) as unknown as { title: string; content: string; deadline?: string | null };
       const ctx = environment === 'mock' ? { fetch: mockFetch } : { fetch: globalThis.fetch as unknown as typeof mockFetch, githubToken: process.env.GITHUB_TOKEN };
       return ok({ bounty: task.title, ...(await precheck({ content: task.content, deadline: task.deadline ?? null }, submission, ctx)) });

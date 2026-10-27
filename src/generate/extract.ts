@@ -76,7 +76,7 @@ async function renderWithBrowser(url: string, cookies?: string): Promise<string 
 
 async function fetchHtml(url: string, cookies?: string): Promise<string> {
   const res = await fetch(url, {
-    headers: { 'user-agent': 'gibwork-bugbash/0.1 (+test-plan generator)', ...(cookies && !cookies.endsWith('.json') ? { cookie: cookies } : {}) },
+    headers: { 'user-agent': 'gibreview/0.1 (+test-plan generator)', ...(cookies && !cookies.endsWith('.json') ? { cookie: cookies } : {}) },
     redirect: 'follow',
   });
   if (!res.ok) throw new Error(`Fetching ${url} failed with HTTP ${res.status}`);

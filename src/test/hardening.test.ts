@@ -14,8 +14,8 @@ import { aggregate } from '../aggregate.js';
 const examplePlan = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'examples', 'checkout-regression.yaml');
 
 async function collectedRun() {
-  const dir = await mkdtemp(join(tmpdir(), 'bugbash-hard-'));
-  const store = new Store(join(dir, '.bugbash'));
+  const dir = await mkdtemp(join(tmpdir(), 'gibreview-hard-'));
+  const store = new Store(join(dir, '.gibreview/qa'));
   const { run } = await planRun(examplePlan, store, 'mock');
   const client = createClient({ environment: 'mock', stateDir: store.dir });
   await publishRun(run, client, store);
@@ -94,7 +94,7 @@ test('the lock hands each holder a fresh copy of the run', async () => {
 
 test('.env.local is loaded and wins over .env, but never over the real environment', async () => {
   const { loadEnvFiles } = await import('../gibwork.js');
-  const dir = await mkdtemp(join(tmpdir(), 'bugbash-env-'));
+  const dir = await mkdtemp(join(tmpdir(), 'gibreview-env-'));
   await writeFile(join(dir, '.env'), 'BB_T_SHARED=from-env\nBB_T_ENV_ONLY=env\nBB_T_PRESET=from-env\n');
   await writeFile(join(dir, '.env.local'), 'BB_T_SHARED=from-local\nBB_T_PRESET=from-local\n');
   process.env.BB_T_PRESET = 'from-shell';

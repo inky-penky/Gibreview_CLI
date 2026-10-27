@@ -20,7 +20,7 @@ const CaseSchema = z.object({
   steps: z.array(z.string().min(1)).min(1),
   expected: z.string().min(3),
   devices: z.array(z.string()).optional(),
-  /** Set by `bugbash generate`. Kept in the plan so reviewers can see what still needs a human look. */
+  /** Set by `gibreview qa generate`. Kept in the plan so reviewers can see what still needs a human look. */
   source: z.enum(['manual', 'rules', 'ai']).optional(),
   reviewNote: z.string().optional(),
 });
@@ -111,7 +111,7 @@ export function validatePlan(raw: unknown): TestPlan {
 export async function loadPlanWithInfo(path: string): Promise<{ plan: TestPlan; warnings: string[] }> {
   if (/\.(csv|tsv)$/i.test(path)) {
     throw new PlanError(
-      `${path} is a list of test cases, not a full plan. Convert it with "bugbash import ${path} --url <build url>", or add "casesFile: ${path}" to a plan YAML.`,
+      `${path} is a list of test cases, not a full plan. Convert it with "gibreview qa import ${path} --url <build url>", or add "casesFile: ${path}" to a plan YAML.`,
     );
   }
   let text: string;

@@ -5,7 +5,7 @@ import { createGibworkClient } from '@gibwork/sdk/node';
 import type { Environment } from './state.js';
 import { MockGibwork } from './mock.js';
 
-/** The slice of the Gibwork SDK that BugBash depends on. The mock implements the same surface. */
+/** The slice of the Gibwork SDK that gibreview depends on. The mock implements the same surface. */
 export interface GibworkLike {
   tasks: Pick<GibworkClient['tasks'], 'create' | 'get' | 'refund' | 'list'>;
   submissions: Pick<GibworkClient['submissions'], 'list' | 'approve' | 'reject'> & {
@@ -35,7 +35,7 @@ export function loadEnvFiles(dir = process.cwd()): string[] {
 }
 
 export function resolveEnvironment(opts: { mock?: boolean; prod?: boolean }): Environment {
-  if (opts.mock || process.env.BUGBASH_MOCK === '1') return 'mock';
+  if (opts.mock || process.env.GIBREVIEW_MOCK === '1') return 'mock';
   if (opts.prod || process.env.GIBWORK_ENV === 'production') return 'production';
   return 'stage';
 }

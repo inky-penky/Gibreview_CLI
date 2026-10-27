@@ -6,7 +6,7 @@ import type { TriageAction } from './engine.js';
 /**
  * Spend guard for the MCP server. An agent can only move funds by quoting a confirm code that is
  * derived from the exact action and amount, so a "yes" given for one budget never covers another.
- * The operator can also cap what any run may put into escrow with BUGBASH_MCP_MAX_BUDGET.
+ * The operator can also cap what any run may put into escrow with GIBREVIEW_MCP_MAX_BUDGET.
  */
 
 export type SpendKind = 'publish' | 'pay';
@@ -20,7 +20,7 @@ export interface Spend {
 
 export interface GuardConfig {
   allowProduction: boolean;
-  /** Raw BUGBASH_MCP_MAX_BUDGET value, in the plan's reward token. Unset means no cap. */
+  /** Raw GIBREVIEW_MCP_MAX_BUDGET value, in the plan's reward token. Unset means no cap. */
   maxBudget?: string;
 }
 
@@ -69,7 +69,7 @@ function fundedCents(run: RunState): number {
 export function parseMaxBudget(raw: string | undefined): number | null {
   if (raw === undefined || raw.trim() === '') return null;
   if (!/^\d+(\.\d{1,2})?$/.test(raw.trim())) {
-    throw new SpendRefused(`BUGBASH_MCP_MAX_BUDGET="${raw}" is not an amount like "50" or "50.00". Spending is blocked until the operator fixes it.`);
+    throw new SpendRefused(`GIBREVIEW_MCP_MAX_BUDGET="${raw}" is not an amount like "50" or "50.00". Spending is blocked until the operator fixes it.`);
   }
   return toCents(raw.trim());
 }
@@ -82,7 +82,7 @@ export function checkBudgetCap(run: RunState, extraCents: number, cfg: GuardConf
   if (total > cap) {
     const sym = run.plan.reward.symbol;
     throw new SpendRefused(
-      `Run budget ${fromCents(total)} ${sym} is over the operator's cap of ${fromCents(cap)} ${sym} (BUGBASH_MCP_MAX_BUDGET). ` +
+      `Run budget ${fromCents(total)} ${sym} is over the operator's cap of ${fromCents(cap)} ${sym} (GIBREVIEW_MCP_MAX_BUDGET). ` +
         'Reduce testers, reward or cases in the plan, or ask the operator to raise the cap. An agent cannot override this.',
     );
   }
@@ -95,7 +95,7 @@ export function checkBudgetCap(run: RunState, extraCents: number, cfg: GuardConf
 export function guardSpend(run: RunState, spend: Spend, code: string | undefined, cfg: GuardConfig): void {
   if (!spend.targets.length) return; // nothing would be funded, paid or rejected
   if (run.environment === 'production' && !cfg.allowProduction) {
-    throw new SpendRefused('Run targets Gibwork production. The server operator must set BUGBASH_MCP_ALLOW_PRODUCTION=1 to allow agent spending.');
+    throw new SpendRefused('Run targets Gibwork production. The server operator must set GIBREVIEW_MCP_ALLOW_PRODUCTION=1 to allow agent spending.');
   }
   if (spend.kind === 'publish') checkBudgetCap(run, spend.cents, cfg);
 

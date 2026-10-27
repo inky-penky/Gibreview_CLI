@@ -18,7 +18,7 @@ export interface ParsedSubmission {
   issues: string[];
 }
 
-export const RESULT_HEADER = 'BUGBASH RESULT';
+export const RESULT_HEADER = 'QA RESULT';
 export const RESULT_FOOTER = 'END';
 const DEVICE_KEY = 'Device';
 
@@ -50,7 +50,7 @@ export function parseSubmission(content: string, expectedCaseIds: string[]): Par
     .map((f) => ({ caseId: f.key, status: f.status!, note: f.note ?? '', evidence: f.urls }));
 
   if (results.length === 0) {
-    return { device, results, verdict: 'invalid', issues: ['No result block found. Use the BUGBASH RESULT template from the bounty.'] };
+    return { device, results, verdict: 'invalid', issues: ['No result block found. Use the QA RESULT template from the bounty.'] };
   }
 
   const issues: string[] = [];

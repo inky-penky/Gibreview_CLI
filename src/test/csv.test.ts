@@ -74,7 +74,7 @@ test('reports row-level problems a person can fix', () => {
 });
 
 test('import writes a valid plan, and --link keeps reading the CSV', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'bugbash-csv-'));
+  const dir = await mkdtemp(join(tmpdir(), 'gibreview-csv-'));
   await copyFile(join(csvDir, 'testrail-export.csv'), join(dir, 'cases.csv'));
 
   const copied = await importCsvPlan({ csvPath: join(dir, 'cases.csv'), outPath: join(dir, 'a.yaml'), url: 'https://staging.example.com' });
@@ -88,5 +88,5 @@ test('import writes a valid plan, and --link keeps reading the CSV', async () =>
   const loaded = await loadPlanWithInfo(join(dir, 'b.yaml'));
   assert.equal(loaded.plan.cases.length, 4);
 
-  await assert.rejects(loadPlanWithInfo(join(dir, 'cases.csv')), (e: unknown) => e instanceof PlanError && /bugbash import/.test(e.message));
+  await assert.rejects(loadPlanWithInfo(join(dir, 'cases.csv')), (e: unknown) => e instanceof PlanError && /gibreview qa import/.test(e.message));
 });

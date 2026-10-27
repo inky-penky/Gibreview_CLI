@@ -1,6 +1,6 @@
-# BugBash test plan
+# gibreview test plan
 # Each device class × chunk of cases becomes one Gibwork bounty.
-# Testers paste a BUGBASH RESULT block back; bugbash parses it, pays complete work and builds the report.
+# Testers paste a QA RESULT block back; gibreview parses it, pays complete work and builds the report.
 
 name: Acme Shop checkout regression
 release: v2.3.0

@@ -13,8 +13,8 @@ const examplePlan = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'e
 const open: GuardConfig = { allowProduction: false };
 
 async function freshRun(environment: RunState['environment'] = 'mock') {
-  const dir = await mkdtemp(join(tmpdir(), 'bugbash-guard-'));
-  const store = new Store(join(dir, '.bugbash'));
+  const dir = await mkdtemp(join(tmpdir(), 'gibreview-guard-'));
+  const store = new Store(join(dir, '.gibreview/qa'));
   const { run } = await planRun(examplePlan, store, environment);
   return { run, store };
 }
@@ -46,7 +46,7 @@ test('production needs the operator flag even with a valid code', async () => {
   const { run } = await freshRun('production');
   const spend = publishSpend(run);
   const code = confirmCode(run, spend);
-  refused(() => guardSpend(run, spend, code, open), /BUGBASH_MCP_ALLOW_PRODUCTION/);
+  refused(() => guardSpend(run, spend, code, open), /GIBREVIEW_MCP_ALLOW_PRODUCTION/);
   assert.doesNotThrow(() => guardSpend(run, spend, code, { allowProduction: true }));
 });
 

@@ -210,7 +210,7 @@ export function planTriage(run: RunState): TriageAction[] {
     // Unrecognised statuses take a slot too, so an unclear payout can never lead to paying an extra tester.
     let slots = testersPerBatch - subs.filter((s) => s.reviewStatus === 'approved' || s.reviewStatus === 'other').length;
     for (const s of subs.filter((x) => x.reviewStatus === 'other')) {
-      actions.push({ submissionId: s.id, batchId: batch.id, username: s.username, action: 'hold', reason: `Gibwork status ${s.remoteStatus ?? 'unknown'} is not one BugBash recognises. Check it on Gibwork before paying anyone else on this bounty` });
+      actions.push({ submissionId: s.id, batchId: batch.id, username: s.username, action: 'hold', reason: `Gibwork status ${s.remoteStatus ?? 'unknown'} is not one gibreview recognises. Check it on Gibwork before paying anyone else on this bounty` });
     }
     for (const s of subs.filter((x) => x.reviewStatus === 'pending')) {
       if (s.parsed.verdict === 'valid') {
@@ -223,7 +223,7 @@ export function planTriage(run: RunState): TriageAction[] {
       } else {
         const reason =
           s.parsed.verdict === 'invalid'
-            ? 'No BUGBASH RESULT block found. Please resubmit using the template in the bounty, one line per case.'
+            ? 'No QA RESULT block found. Please resubmit using the template in the bounty, one line per case.'
             : `Incomplete. ${s.parsed.issues.join('. ')}. Please resubmit with every case filled in and an evidence link for each FAIL.`;
         actions.push({ submissionId: s.id, batchId: batch.id, username: s.username, action: 'reject', reason });
       }
