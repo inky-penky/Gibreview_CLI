@@ -14,7 +14,7 @@ criteria:
   - { text: Accurate against the API reference, weight: 40 }
   - { text: Clear for someone new to payments, weight: 20 }
 payout:
-  rule: top-n
+  rule: multiple-winners   # one-winner | multiple-winners | pool
   amounts: ["15.00", "10.00", "5.00"]
 review:
   duplicates: 0.85         # a later submission this similar to an earlier one is a copy

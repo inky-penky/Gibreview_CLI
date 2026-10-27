@@ -36,6 +36,14 @@ const FieldSchema = z.object({
 export type BriefField = z.infer<typeof FieldSchema>;
 
 export const PRESETS = ['content', 'dev', 'custom'] as const;
+
+/**
+ * How a bounty pays, matching what Gibwork supports:
+ * one-winner pays one submission, multiple-winners pays a set amount per place (top 3, top 10),
+ * pool pays every accepted submission the same amount until the pool runs out.
+ */
+export const PAYOUT_RULES = ['one-winner', 'multiple-winners', 'pool'] as const;
+export type PayoutRule = (typeof PAYOUT_RULES)[number];
 export type Preset = (typeof PRESETS)[number];
 
 const PRESET_FIELDS: Record<Exclude<Preset, 'custom'>, z.input<typeof FieldSchema>[]> = {
@@ -66,15 +74,14 @@ export const BriefSchema = z
       .optional(),
     template: z.array(FieldSchema).min(1).optional(),
     criteria: z.array(z.object({ text: z.string().min(3), weight: z.number().int().min(1).max(100).default(1) })).default([]),
-    payout: z
-      .object({
-        rule: z.enum(['winner', 'top-n', 'threshold']).default('winner'),
-        /** top-n: one amount per place. winner and threshold: one amount per paid submission. */
-        amounts: z.array(money).min(1),
-        /** threshold: most submissions to pay. Defaults to as many as the pool covers. */
-        maxWinners: z.number().int().min(1).optional(),
-      })
-      .optional(),
+    /** Required: the creator states how winners are paid, nothing is assumed. */
+    payout: z.object({
+      rule: z.enum(PAYOUT_RULES, { message: `payout.rule must be one of ${PAYOUT_RULES.join(', ')}` }),
+      /** one-winner: the winner's amount. multiple-winners: one amount per place. pool: what each accepted submission earns. */
+      amounts: z.array(money).min(1),
+      /** pool only: most submissions to pay. Without it, the pool pays as many as it covers. */
+      maxWinners: z.number().int().min(1).optional(),
+    }, { message: `payout is required: say whether this bounty pays ${PAYOUT_RULES.join(', ')}` }),
     review: z
       .object({
         /** Similarity (0 to 1) at or above which a later submission is a duplicate of an earlier one. */
@@ -103,13 +110,22 @@ export const BriefSchema = z
         if (typeof c === 'object' && 'words' in c && f.type !== 'text') ctx.addIssue({ code: 'custom', path: ['template', i, 'checks', j], message: `words needs a text field, ${f.id} is a url` });
       });
     });
-    if (b.payout?.rule === 'winner' && b.payout.amounts.length > 1) {
-      ctx.addIssue({ code: 'custom', path: ['payout', 'amounts'], message: 'winner pays one amount; use top-n for several places' });
+    if (b.payout.rule === 'one-winner' && b.payout.amounts.length > 1) {
+      ctx.addIssue({ code: 'custom', path: ['payout', 'amounts'], message: 'one-winner pays one amount; use multiple-winners for several places' });
     }
-    if (b.payout?.rule === 'threshold' && b.payout.amounts.length > 1) {
-      ctx.addIssue({ code: 'custom', path: ['payout', 'amounts'], message: 'threshold pays every accepted submission the same amount; use top-n for different amounts per place' });
+    if (b.payout.rule === 'pool' && b.payout.amounts.length > 1) {
+      ctx.addIssue({ code: 'custom', path: ['payout', 'amounts'], message: 'pool pays every accepted submission the same amount; use multiple-winners for different amounts per place' });
     }
-    if (b.bounty && b.payout && totalPayoutCents(b) > toCents(b.bounty.pool)) {
+    if (b.payout.rule !== 'pool' && b.payout.maxWinners) {
+      ctx.addIssue({ code: 'custom', path: ['payout', 'maxWinners'], message: `maxWinners only applies to pool; ${b.payout.rule} pays one submission per listed amount` });
+    }
+    if (b.payout.amounts.some((a) => toCents(a) === 0)) {
+      ctx.addIssue({ code: 'custom', path: ['payout', 'amounts'], message: 'every payout amount must be more than 0' });
+    }
+    if (b.bounty && b.payout.rule === 'pool' && winnerSlots(b) === 0) {
+      ctx.addIssue({ code: 'custom', path: ['payout', 'amounts'], message: `the pool of ${b.bounty.pool} cannot cover one payment of ${b.payout.amounts[0]}` });
+    }
+    if (b.bounty && totalPayoutCents(b) > toCents(b.bounty.pool)) {
       ctx.addIssue({ code: 'custom', path: ['payout'], message: `payouts add up to ${fromCents(totalPayoutCents(b))}, more than the pool of ${b.bounty.pool}` });
     }
   });
@@ -119,25 +135,25 @@ export type Brief = z.output<typeof BriefSchema>;
 /** Most the payout rule can pay in total. */
 export function totalPayoutCents(b: Pick<Brief, 'payout' | 'bounty'>, poolCents?: number): number {
   const p = b.payout;
-  if (!p) return 0;
-  const cents = p.amounts.map(toCents);
-  if (p.rule === 'top-n') return cents.reduce((n, c) => n + c, 0);
-  if (p.rule === 'threshold') return cents[0] * winnerSlots(b, poolCents);
-  return cents[0];
+  if (p.rule === 'pool') return toCents(p.amounts[0]) * winnerSlots(b, poolCents);
+  return p.amounts.reduce((n, a) => n + toCents(a), 0);
 }
 
 /**
- * How many submissions the payout rule pays, which is how long the shortlist is. A threshold
- * without maxWinners pays as many as the pool covers: the brief's pool, or the attached task's.
+ * How many submissions the payout rule pays, which is how long the shortlist is. A pool without
+ * maxWinners pays as many as it covers: the attached task's pool when given, else the brief's.
  */
 export function winnerSlots(b: Pick<Brief, 'payout' | 'bounty'>, poolCents?: number): number {
   const p = b.payout;
-  if (!p) return 1;
-  if (p.rule === 'top-n') return p.amounts.length;
-  if (p.rule !== 'threshold') return 1;
+  if (p.rule !== 'pool') return p.amounts.length;
   if (p.maxWinners) return p.maxWinners;
   const pool = poolCents ?? (b.bounty ? toCents(b.bounty.pool) : 0);
-  return Math.max(1, Math.floor(pool / toCents(p.amounts[0])));
+  return Math.floor(pool / toCents(p.amounts[0]));
+}
+
+/** What the place pays (1-based). Every place pays the same in a pool. */
+export function placeAmount(b: Pick<Brief, 'payout'>, place: number): string {
+  return b.payout.rule === 'pool' ? b.payout.amounts[0] : b.payout.amounts[place - 1];
 }
 
 export function validateBrief(raw: unknown): Brief {
@@ -169,6 +185,12 @@ export function briefTemplate(b: Brief): Template {
   };
 }
 
+export function ordinal(n: number): string {
+  const tens = n % 100;
+  const suffix = tens >= 11 && tens <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th';
+  return `${n}${suffix}`;
+}
+
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 function describeCheck(c: CheckSpec, field: BriefField): string {
@@ -192,16 +214,14 @@ export function briefContent(b: Brief, runId: string): string {
   parts.push(`<pre>${esc(renderTemplate(briefTemplate(b)))}</pre>`);
   const rules = b.template.flatMap((f) => [...(f.required ? [`${f.id} is required`] : []), ...f.checks.map((c) => describeCheck(c, f))]);
   parts.push(`<p>Every submission is checked automatically: ${esc(rules.join('; '))}. Copies of another submission and work sent after the deadline are not accepted.</p>`);
-  if (b.payout) {
-    const amounts = b.payout.amounts.map((a) => `${a} ${sym}`);
-    const how =
-      b.payout.rule === 'top-n'
-        ? `Places are paid ${amounts.join(', ')}.`
-        : b.payout.rule === 'threshold'
-          ? `Every accepted submission is paid ${amounts[0]}, up to ${winnerSlots(b)} submissions.`
-          : `The best submission is paid ${amounts[0]}.`;
-    parts.push(`<p><strong>Payout:</strong> ${esc(how)}</p>`);
-  }
+  const amounts = b.payout.amounts.map((a) => `${a} ${sym}`);
+  const how =
+    b.payout.rule === 'multiple-winners'
+      ? `The top ${amounts.length} are paid ${amounts.map((a, i) => `${ordinal(i + 1)} ${a}`).join(', ')}.`
+      : b.payout.rule === 'pool'
+        ? `Every accepted submission is paid ${amounts[0]}, up to ${winnerSlots(b)} submissions.`
+        : `The best submission is paid ${amounts[0]}.`;
+  parts.push(`<p><strong>Payout:</strong> ${esc(how)}</p>`);
   parts.push(`<p><small>Ref ${esc(runId)}. Reviewed with gibwork-review.</small></p>`);
   return parts.join('\n');
 }

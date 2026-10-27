@@ -15,7 +15,7 @@ import { mockFetch } from '../review/mockweb.js';
 import { htmlToText } from '../template.js';
 
 const examples = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'examples', 'review');
-const base = { name: 'Guide', description: 'Write a guide to the API.' };
+const base = { name: 'Guide', description: 'Write a guide to the API.', payout: { rule: 'one-winner', amounts: ['10'] } };
 
 // ---------- brief ----------
 
@@ -39,21 +39,26 @@ test('brief validation explains what is wrong', () => {
   };
   assert.match(String(issues({ ...base })), /custom brief needs a template/);
   assert.match(String(issues({ ...base, template: [{ id: 'notes', label: 'Notes', type: 'text', checks: ['reachable'] }] })), /needs a url field/);
-  assert.match(String(issues({ ...base, preset: 'content', payout: { rule: 'winner', amounts: ['5', '3'] } })), /use top-n/);
-  assert.match(String(issues({ ...base, preset: 'content', bounty: { pool: '10' }, payout: { rule: 'top-n', amounts: ['8', '5'] } })), /more than the pool/);
-  assert.match(String(issues({ ...base, preset: 'content', payout: { rule: 'threshold', amounts: ['5', '3'] } })), /same amount/);
+  assert.match(String(issues({ ...base, preset: 'content', payout: undefined })), /payout is required: say whether this bounty pays one-winner, multiple-winners, pool/);
+  assert.match(String(issues({ ...base, preset: 'content', payout: { amounts: ['5'] } })), /payout.rule must be one of/);
+  assert.match(String(issues({ ...base, preset: 'content', payout: { rule: 'one-winner', amounts: ['5', '3'] } })), /use multiple-winners/);
+  assert.match(String(issues({ ...base, preset: 'content', bounty: { pool: '10' }, payout: { rule: 'multiple-winners', amounts: ['8', '5'] } })), /more than the pool/);
+  assert.match(String(issues({ ...base, preset: 'content', payout: { rule: 'pool', amounts: ['5', '3'] } })), /same amount/);
+  assert.match(String(issues({ ...base, preset: 'content', payout: { rule: 'one-winner', amounts: ['5'], maxWinners: 3 } })), /maxWinners only applies to pool/);
+  assert.match(String(issues({ ...base, preset: 'content', bounty: { pool: '4' }, payout: { rule: 'pool', amounts: ['5'] } })), /cannot cover one payment/);
+  assert.match(String(issues({ ...base, preset: 'content', payout: { rule: 'multiple-winners', amounts: ['5', '0'] } })), /more than 0/);
 });
 
-test('a threshold payout pays as many submissions as the pool covers', () => {
-  const b = validateBrief({ ...base, preset: 'content', bounty: { pool: '50' }, payout: { rule: 'threshold', amounts: ['5'] } });
+test('a pool payout pays as many submissions as the pool covers, unless capped', () => {
+  const b = validateBrief({ ...base, preset: 'content', bounty: { pool: '50' }, payout: { rule: 'pool', amounts: ['5'] } });
   assert.equal(winnerSlots(b), 10);
   assert.equal(winnerSlots(b, 2_000), 4); // an attached task's pool wins over the brief's
-  assert.equal(winnerSlots({ ...b, payout: { ...b.payout!, maxWinners: 3 } }), 3);
+  assert.equal(winnerSlots({ ...b, payout: { ...b.payout, maxWinners: 3 } }), 3);
   assert.match(htmlToText(briefContent(b, 'run-1')), /paid 5 USDC, up to 10 submissions/);
 });
 
 test('the bounty text carries a template that parses back', () => {
-  const b = validateBrief({ ...base, preset: 'dev', payout: { rule: 'winner', amounts: ['20'] } });
+  const b = validateBrief({ ...base, preset: 'dev', payout: { rule: 'one-winner', amounts: ['20'] } });
   const text = htmlToText(briefContent(b, 'run-1'));
   assert.ok(text.includes(renderTemplate(briefTemplate(b))));
   assert.match(text, /must be a pull request with passing CI/);
@@ -198,12 +203,12 @@ test('dev bounty: attach to an existing task and rank by reputation', async () =
     quickcash99: 'invalid',
   });
   assert.equal(ranked[0].submission.username, 'ada_dev', 'reputation breaks the tie');
-  assert.equal(ranked.filter((r) => r.shortlisted).length, 1, 'winner rule shortlists one');
+  assert.equal(ranked.filter((r) => r.shortlisted).length, 1, 'one-winner shortlists one');
 });
 
-test('a brief without bounty or payout cannot be published', async () => {
+test('a brief without a bounty section cannot be published', async () => {
   const { dir, store, client } = await mockReview('content-brief.yaml');
   const path = join(dir, 'b.yaml');
-  await writeFile(path, 'name: No money\npreset: content\ndescription: Just reviewing an existing bounty.\n');
+  await writeFile(path, 'name: No money\npreset: content\ndescription: Just reviewing an existing bounty.\npayout: { rule: one-winner, amounts: ["10"] }\n');
   await assert.rejects(publishBrief(await loadBrief(path), path, 'mock', client, store), /no bounty section/);
 });

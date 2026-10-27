@@ -23,10 +23,10 @@ Give Gibwork bounty creators a CLI and MCP server that turns a pile of submissio
 
 **How payouts work (confirmed by the project owner, 2026-10-27):**
 
-- A creator pays winners in one of two ways, and Gibwork supports both:
-  - a fixed amount for every accepted submission (`threshold`)
-  - a set amount per place for the top 3, top 10 and so on (`top-n`)
-  - `winner` is `top-n` with one place
+- The creator must state how the bounty pays; the copilot never assumes a rule or a number of winners:
+  - `one-winner`: one submission is paid
+  - `multiple-winners`: a set amount per place for the top 3, top 10 and so on
+  - `pool`: every accepted submission earns the same amount until the pool runs out (or `maxWinners`)
 - Approving one winner does not close the bounty. Every winner is paid by its own `approve` call.
 - There is no minimum per approval. Each winner gets the amount for their place.
 - The whole pool goes to winners. Any Gibwork fee is paid by the creator, not taken from winners.
@@ -46,7 +46,7 @@ gibreview publish --confirm                             # skip when attaching to
 gibreview collect                                       # fetch and check every submission
 gibreview rank                                          # shortlist with scores and reasons
 gibreview decide                                        # dry run: PAY / CHANGES / REJECT / HOLD
-gibreview decide --apply                                # pays through escrow, comments, rejects
+gibreview decide --apply --confirm <code>               # pays through escrow, comments, rejects
 gibreview close --confirm                               # refund what is left, write the report
 ```
 
@@ -85,9 +85,8 @@ criteria:                       # shown to participants; used by the optional AI
   - { text: Accurate against the API reference, weight: 40 }
   - { text: Clear for a beginner, weight: 20 }
 payout:
-  rule: top-n                   # winner | top-n | threshold
+  rule: multiple-winners        # required: one-winner | multiple-winners | pool
   amounts: ["15.00", "10.00", "5.00"]
-  minScore: 60
 review:
   ai: false                     # true turns on the rubric scorer (needs ANTHROPIC_API_KEY)
   duplicates: 0.85              # similarity at or above this is a duplicate
@@ -150,7 +149,7 @@ Each milestone keeps every existing test green.
 | --- | --- | --- |
 | M1 ✅ | Generic `template.ts`; QA parser rebuilt on it with identical results | no |
 | M2 ✅ | Brief format, `attach`, `collect`, checks for `dev` and `content`, `rank`, shortlist report | no (except `publish --confirm`) |
-| M3 | `decide` with payout rules, request-changes comments, spend guard on approvals, `close` | yes |
+| M3 ✅ | `decide` with payout rules, request-changes comments, confirm code on approvals, `close` (CLI; the `review_*` MCP tools are not built yet) | yes |
 | M4 | Participant pre-check (`check` command and `review_precheck` tool) | no |
 | M5 | Stage verification pass (section 9), mock updated to match | yes, small |
 | M6 (stretch) | AI rubric scorer | no |

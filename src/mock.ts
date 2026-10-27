@@ -31,6 +31,8 @@ interface MockSubmission {
   rejectReason: string | null;
   createdAt: string;
   username: string;
+  comments?: Array<{ id: string; content: string; createdAt: string }>;
+  paid?: string;
 }
 
 interface Ledger {
@@ -132,9 +134,19 @@ export class MockGibwork {
       const l = await this.read();
       const t = l.tasks.find((x) => x.id === taskId);
       if (!t) throw new Error(`mock: task ${taskId} not found`);
+      if (t.refunded) throw new Error(`mock: task ${taskId} was already refunded`);
       t.refunded = true;
       await this.write(l);
-      return { taskId, txHash: fakeTx(`refund-${taskId}`), intentId: randomUUID(), lastValidBlockHeight: 0 } as never;
+      const paidCents = l.submissions.filter((s) => s.taskId === taskId && s.paid).reduce((n, s) => n + Math.round(Number(s.paid) * 100), 0);
+      const left = ((Math.round(Number(t.amount) * 100) - paidCents) / 100).toFixed(2);
+      const token = { mintAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', symbol: 'USDC', decimals: 6 };
+      return {
+        taskId,
+        txHash: fakeTx(`refund-${taskId}`),
+        intentId: randomUUID(),
+        lastValidBlockHeight: 0,
+        refundQuote: { token, grossRefundAmount: left, platformFee: { percent: 0, amount: '0.00' }, netRefundAmount: left },
+      } as never;
     },
   };
 
@@ -159,7 +171,7 @@ export class MockGibwork {
         createdAt: s.createdAt,
         createdBy: s.username,
         user: { username: s.username, ...(REPUTATION[s.username] ?? { approvedTaskSubmissions: 0, rejectedTaskSubmissions: 0, rating: 0 }) },
-        comments: [],
+        comments: (s.comments ?? []).map((c) => ({ ...c, taskSubmissionId: s.id })),
         media: [],
       }));
       return { results, page, limit, total: all.length, lastPage: Math.max(1, Math.ceil(all.length / limit)) } as never;
@@ -170,7 +182,12 @@ export class MockGibwork {
       const s = l.submissions.find((x) => x.id === submissionId && x.taskId === taskId);
       if (!s) throw new Error(`mock: submission ${submissionId} not found`);
       if (s.status !== 'OPEN') throw new Error(`mock: submission ${submissionId} already ${s.status}`);
+      const t = l.tasks.find((x) => x.id === taskId)!;
+      if (t.refunded) throw new Error(`mock: task ${taskId} is closed`);
+      const paidCents = l.submissions.filter((x) => x.taskId === taskId && x.paid).reduce((n, x) => n + Math.round(Number(x.paid) * 100), 0);
+      if (paidCents + Math.round(Number(input.amount) * 100) > Math.round(Number(t.amount) * 100)) throw new Error('mock: approval is more than the escrow has left');
       s.status = 'CLAIMED';
+      s.paid = input.amount;
       await this.write(l);
       return {
         taskId,
@@ -178,7 +195,15 @@ export class MockGibwork {
         txHash: fakeTx(`approve-${submissionId}`),
         intentId: randomUUID(),
         lastValidBlockHeight: 0,
-        approvalQuote: { grossApprovalAmount: input.amount, netPayoutAmount: input.amount },
+        approvalQuote: {
+          token: { mintAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', symbol: 'USDC', decimals: 6 },
+          grossApprovalAmount: input.amount,
+          platformFee: { percent: 0, amount: '0.00' },
+          referralFee: '0.00',
+          netPayoutAmount: input.amount,
+          // Gibwork keeps a bounty open after an approval, so every winner can be paid.
+          closeTask: false,
+        },
       } as never;
     },
 
@@ -190,6 +215,18 @@ export class MockGibwork {
       s.rejectReason = reason ?? null;
       await this.write(l);
       return { message: 'Submission rejected', submission: { id: s.id, taskId, status: 'REJECTED', rejectReason: reason, reviewedAt: new Date().toISOString() } } as never;
+    },
+
+    comments: {
+      create: async (taskId: string, submissionId: string, content: string) => {
+        const l = await this.read();
+        const s = l.submissions.find((x) => x.id === submissionId && x.taskId === taskId);
+        if (!s) throw new Error(`mock: submission ${submissionId} not found`);
+        const comment = { id: randomUUID(), content, createdAt: new Date().toISOString() };
+        (s.comments ??= []).push(comment);
+        await this.write(l);
+        return { ...comment, taskSubmissionId: submissionId } as never;
+      },
     },
   };
 }

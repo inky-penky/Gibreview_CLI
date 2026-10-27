@@ -27,6 +27,20 @@ export interface ReviewSubmission {
   reputation: Reputation | null;
   checks: CheckResult[];
   verdict: ReviewVerdict;
+  /** Set once gibreview pays or rejects it. */
+  decision?: ReviewDecision;
+  /** Set when gibreview asked for a fix; contentHash says which version of the submission was commented on. */
+  changesRequested?: { at: string; message: string; contentHash: string };
+}
+
+export interface ReviewDecision {
+  action: 'pay' | 'reject';
+  at: string;
+  /** 1-based place this payment filled. */
+  place?: number;
+  amount?: string;
+  txHash?: string;
+  reason?: string;
 }
 
 export interface ReviewTask {
@@ -54,6 +68,8 @@ export interface ReviewState {
   task: ReviewTask;
   submissions: Record<string, ReviewSubmission>;
   collectedAt?: string;
+  /** Set when the leftover pool was refunded and the bounty closed. */
+  closed?: { at: string; txHash: string; refunded?: string };
 }
 
 export type ReviewStore = Store<ReviewState>;
@@ -75,7 +91,6 @@ export interface PublishPreview {
 
 export function publishPreview(brief: Brief): PublishPreview {
   if (!brief.bounty) throw new PlanError('This brief has no bounty section. Add bounty.pool to publish it, or attach it to an existing bounty instead.');
-  if (!brief.payout) throw new PlanError('This brief has no payout section, so nobody could be paid. Add payout.rule and payout.amounts.');
   const minCents = Math.min(...brief.payout.amounts.map(toCents));
   return {
     pool: brief.bounty.pool,
@@ -195,6 +210,8 @@ export async function collectReview(state: ReviewState, client: GibworkLike, sto
             : null,
         checks: [],
         verdict: 'invalid',
+        ...(prev?.decision ? { decision: prev.decision } : {}),
+        ...(prev?.changesRequested ? { changesRequested: prev.changesRequested } : {}),
       };
       const parsed = parseTemplate(s.content, template);
       sub.fields = Object.fromEntries([...parsed.fields].map(([k, v]) => [k, { text: v.text, urls: v.urls }]));

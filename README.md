@@ -50,7 +50,7 @@ git clone https://github.com/inky-penky/Gibwork_Bug_Bash_CLI.git gibwork-bugbash
 cd gibwork-bugbash
 npm install          # also builds dist/ via the prepare script
 npm link             # optional, puts `bugbash` and `bugbash-mcp` on your PATH
-npm test             # 54 tests, including a full end-to-end run on the simulator
+npm test             # 62 tests, including a full end-to-end run on the simulator
 ```
 
 Without `npm link`, replace `bugbash` with `node dist/cli.js` in the commands below.
@@ -311,7 +311,7 @@ node examples/mcp-agent-demo.mjs
 
 ## Review Copilot (preview): review any Gibwork bounty
 
-`gibreview` brings the same approach to any bounty, not only QA. It checks every submission against the bounty's template and rules and ranks them into a shortlist, with a reason for every verdict. It can review a bounty you created on the Gibwork website (`attach`, read-only), or publish a new one from a brief. Paying winners (`decide`) is the next milestone; today nothing it does moves money except `publish --confirm`. The plan is in [docs/review-copilot-plan.md](docs/review-copilot-plan.md).
+`gibreview` brings the same approach to any bounty, not only QA. It checks every submission against the bounty's template and rules, ranks them into a shortlist with a reason for every verdict, then pays the winners through Gibwork escrow and refunds what nobody won. It can review a bounty you created on the Gibwork website (`attach`), or publish a new one from a brief. The plan is in [docs/review-copilot-plan.md](docs/review-copilot-plan.md).
 
 ```bash
 gibreview init brief.yaml --preset content     # or --preset dev
@@ -320,7 +320,24 @@ gibreview publish brief.yaml --confirm         # create and fund a new one
 gibreview collect                              # fetch submissions and run the checks
 gibreview rank                                 # shortlist, plus review-report/review.md and review.json
 gibreview show @username                       # one submission with every check result
+gibreview decide                               # dry run: who is paid, asked to fix, rejected or held
+gibreview decide --apply --confirm <code>      # pays, comments and rejects exactly what the dry run showed
+gibreview close --confirm                      # refunds the part of the pool nobody won
 ```
+
+Only `publish --confirm`, `decide --apply` and `close --confirm` move money or post anything.
+
+**Payouts.** Every brief must say how the bounty pays; nothing is assumed:
+
+| `payout.rule` | `amounts` | Pays |
+| --- | --- | --- |
+| `one-winner` | one amount | the best eligible submission |
+| `multiple-winners` | one amount per place, e.g. `["15", "10", "5"]` | the top 3, top 10 and so on, by place |
+| `pool` | one amount | every eligible submission the same amount, until the pool runs out (or `maxWinners`) |
+
+**Decide.** Eligible submissions fill the paid places in rank order. A submission that only failed fixable checks (a dead link, failing CI) gets a comment asking for the fix instead of a rejection, but only while a paid place is still open, so nobody is asked to do work that can no longer win. Duplicates, late work, the wrong repository and unused templates are rejected with the reason. Eligible work beyond the paid places is held for the creator. The confirm code is a hash of the run, the total and every action with its amount, so if anything changes between the dry run and `--apply`, the code is refused. Each action is saved as it completes, so an interrupted run resumes without paying anyone twice. It stops at an uncertain payment, and stops paying if Gibwork reports that an approval closed the bounty.
+
+**Close.** Refuses while winners in the current plan are unpaid (override with `--force`), and warns when places are still open for submissions being fixed.
 
 Try it offline with `--mock` on `publish` or `attach`:
 
@@ -400,7 +417,7 @@ src/
   generate/     URL → page model → draft test plan (rule-based and AI writers)
   csvcases.ts   CSV/TSV case reader (column mapping, priorities, step splitting)
   importplan.ts bugbash import, CSV → test plan
-  review/       gibreview: brief format, checks, collect and rank, shortlist report, offline web for --mock
+  review/       gibreview: brief format, checks, collect, rank, decide and close, shortlist report, offline web for --mock
   test/         node:test unit and end-to-end tests
 examples/       sample plan, demo scripts, CI workflow, sample output, review briefs
 docs/           Review Copilot plan

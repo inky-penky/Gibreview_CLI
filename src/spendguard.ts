@@ -47,12 +47,17 @@ export function paySpend(actions: TriageAction[]): Spend {
 
 /** e.g. "publish-24.00-USDC-7f3a91". Changes whenever the run, amount or covered targets change. */
 export function confirmCode(run: RunState, spend: Spend): string {
+  return spendCode(run.runId, run.plan.reward.symbol, spend);
+}
+
+/** The same code for any kind of run: bound to the run, the amount and exactly what it covers. */
+export function spendCode(runId: string, symbol: string, spend: Spend): string {
   const amount = fromCents(spend.cents);
   const hash = createHash('sha256')
-    .update([run.runId, spend.kind, amount, ...[...spend.targets].sort()].join('\n'))
+    .update([runId, spend.kind, amount, ...[...spend.targets].sort()].join('\n'))
     .digest('hex')
     .slice(0, 6);
-  return `${spend.kind}-${amount}-${run.plan.reward.symbol}-${hash}`;
+  return `${spend.kind}-${amount}-${symbol}-${hash}`;
 }
 
 /** Escrow this run has already funded, so the cap holds across several publish calls. */

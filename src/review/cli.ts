@@ -12,6 +12,7 @@ import { htmlToText } from '../template.js';
 import { loadBrief, winnerSlots } from './brief.js';
 import type { CheckContext } from './checks.js';
 import { attachTask, collectReview, publishBrief, publishPreview, rankReview, type ReviewState } from './engine.js';
+import { applyDecisions, closePreview, closeReview, decisionCode, planDecisions, type ReviewAction } from './decide.js';
 import { mockFetch } from './mockweb.js';
 import { writeShortlist } from './report.js';
 
@@ -118,7 +119,86 @@ program
     const files = await writeShortlist(state, ranked, opts.out);
     console.log('');
     files.forEach((f) => console.log(`${c.green('✓')} ${f}`));
-    console.log(c.dim('\nNothing is paid at this step. Paying winners comes with "gibreview decide" (next milestone).'));
+    console.log(c.dim(`\nNothing is paid at this step. Read the shortlisted work, then run "gibreview decide" to see who would be paid.`));
+  });
+
+const ACTION = { pay: c.green('PAY    '), 'request-changes': c.yellow('CHANGES'), reject: c.red('REJECT '), hold: c.dim('HOLD   ') };
+const money = (cents: number, sym: string) => `${(cents / 100).toFixed(2)} ${sym}`;
+
+function showActions(actions: ReviewAction[], sym: string) {
+  for (const a of actions) {
+    const what = a.action === 'pay' ? `${c.bold(`${a.amount} ${sym}`)}  ${a.message}` : c.dim(a.message);
+    const done = a.outcome === 'done' ? c.green('  ✓') : a.outcome === 'error' ? c.red(`  ✗ ${a.error}`) : '';
+    console.log(`  ${ACTION[a.action]} @${a.username.padEnd(15)} ${what}${done}`);
+  }
+}
+
+program
+  .command('decide')
+  .description('who to pay, who to ask for a fix, who to reject (dry run unless --apply)')
+  .option('--apply', 'pay winners through escrow, post fix requests and send rejections')
+  .option('--confirm <code>', 'the confirm code the dry run printed; it covers exactly that plan')
+  .action(async (opts: { apply?: boolean; confirm?: string }) => {
+    await store().withRun(program.opts().run, async (state) => {
+      if (!state.collectedAt) throw new Error('No submissions collected yet. Run "gibreview collect" first.');
+      const plan = planDecisions(state);
+      const sym = state.task.symbol;
+      const code = decisionCode(state, plan);
+      const count = (k: ReviewAction['action']) => plan.actions.filter((a) => a.action === k).length;
+      console.log(`${c.bold(state.brief.name)}  ${envBadge(state.environment)}  ${c.dim(`${state.brief.payout.rule}, pool ${state.task.pool} ${sym}`)}\n`);
+      plan.notes.forEach((n) => console.log(`  ${c.yellow('!')} ${n}`));
+      if (plan.notes.length) console.log('');
+      showActions(opts.apply && opts.confirm === code ? [] : plan.actions, sym);
+      if (!code) return console.log(`${plan.actions.length ? '\n' : ''}Nothing to do: every submission is decided, held or waiting for a fix.`);
+
+      const pays = count('pay');
+      const summary = `${c.bold(money(plan.payCents, sym))} to ${pays} winner${pays === 1 ? '' : 's'} · ${count('request-changes')} fix requests · ${count('reject')} rejections · ${count('hold')} held`;
+      const leftCents = plan.poolCents - plan.paidCents - plan.payCents;
+      const left = leftCents > 0 ? `${money(leftCents, sym)} of the pool left afterwards; "gibreview close" refunds it` : 'the whole pool is paid out';
+      if (!opts.apply || opts.confirm !== code) {
+        console.log(`\n  ${summary}\n  ${c.dim(left)}`);
+        if (opts.apply) {
+          process.exitCode = 1;
+          console.log(c.red(`\n✗ ${opts.confirm ? 'That confirm code is for a different plan: submissions or amounts changed since.' : 'Applying needs the confirm code.'} Nothing was sent.`));
+        } else {
+          console.log(c.dim('\nDry run. Nothing was paid, posted or rejected.'));
+        }
+        return console.log(`To apply exactly this plan: ${c.bold(`gibreview decide --apply --confirm ${code}`)}`);
+      }
+
+      await applyDecisions(state, client(state.environment), store(), plan, log);
+      showActions(plan.actions, sym);
+      const failed = plan.actions.filter((a) => a.outcome === 'error').length;
+      if (failed) {
+        process.exitCode = 1;
+        return console.log(c.red(`\n✗ ${failed} action${failed === 1 ? '' : 's'} failed. Fix the cause and run decide again; finished actions are not repeated.`));
+      }
+      console.log(`\n${c.green('✓')} Done. ${c.dim(left)}`);
+    });
+  });
+
+program
+  .command('close')
+  .description('refund the part of the pool nobody won and close the bounty')
+  .option('--confirm', 'actually refund and close')
+  .option('--force', 'close even though winners in the current plan are unpaid')
+  .action(async (opts: { confirm?: boolean; force?: boolean }) => {
+    await store().withRun(program.opts().run, async (state) => {
+      const sym = state.task.symbol;
+      if (state.closed) return console.log(`Already closed on ${state.closed.at}${state.closed.refunded ? `, ${state.closed.refunded} ${sym} refunded` : ''}.`);
+      const p = closePreview(state);
+      console.log(`${c.bold(state.brief.name)}  ${envBadge(state.environment)}`);
+      console.log(`  pool ${state.task.pool} ${sym} · paid ${p.paid} ${sym} · about ${c.bold(`${p.left} ${sym}`)} comes back, less any Gibwork refund fee`);
+      if (p.undecided) console.log(c.dim(`  ${p.undecided} submission${p.undecided === 1 ? ' stays' : 's stay'} undecided (held or waiting for a fix)`));
+      if (p.unpaidWinners.length && !opts.force) {
+        process.exitCode = 1;
+        console.log(c.red(`\n✗ ${p.unpaidWinners.map((a) => `@${a.username} (${a.amount} ${sym})`).join(', ')} would be paid by the current plan but ${p.unpaidWinners.length === 1 ? 'is' : 'are'} not yet.`));
+        return console.log(`Run ${c.bold('gibreview decide')} first, or close anyway with ${c.bold('--force')} and they are never paid.`);
+      }
+      if (!opts.confirm) return console.log(`\nNothing refunded. Re-run with ${c.bold('--confirm')} to close the bounty.`);
+      const closed = await closeReview(state, client(state.environment), store());
+      console.log(`${c.green('✓')} Closed${closed.refunded ? `, ${closed.refunded} ${sym} refunded` : ''}  ${c.dim(`tx ${closed.txHash}`)}`);
+    });
   });
 
 program
@@ -130,6 +210,9 @@ program
     console.log(`${c.bold(s.brief.name)}  ${envBadge(s.environment)}  run ${s.runId}`);
     console.log(`  task ${s.task.id ?? (s.task.ambiguous ? c.red(`unresolved (intent ${s.task.ambiguous.intentId})`) : 'not published')} · ${s.task.publishedBy} · pool ${s.task.pool} ${s.task.symbol}`);
     console.log(`  ${subs.length} submissions${s.collectedAt ? `, last collected ${s.collectedAt}` : ', not collected yet'}`);
+    const paid = subs.filter((x) => x.decision?.action === 'pay');
+    if (paid.length) console.log(`  paid ${paid.map((x) => `@${x.username} ${x.decision!.amount}`).join(', ')} ${s.task.symbol}`);
+    if (s.closed) console.log(`  closed ${s.closed.at}${s.closed.refunded ? `, ${s.closed.refunded} ${s.task.symbol} refunded` : ''}`);
   });
 
 program

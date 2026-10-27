@@ -26,7 +26,7 @@ criteria:
   - { text: Tests cover each status code, weight: 30 }
   - { text: Small, readable change, weight: 10 }
 payout:
-  rule: winner
+  rule: one-winner         # one-winner | multiple-winners | pool
   amounts: ["50.00"]
 review:
   order: reputation
