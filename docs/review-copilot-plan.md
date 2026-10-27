@@ -60,8 +60,10 @@ Give Gibwork bounty creators a CLI and MCP server that turns a pile of submissio
 
 The account wallet **cannot be exported**; the app only offers deposit and withdraw (confirmed by the project owner, 2026-10-27). So for bounties made on gibwork.com the website checklist is the permanent flow: gibreview reviews, ranks and plans, and the creator approves, comments, rejects and refunds on the site. Automatic payment is only for bounties made with `gibreview publish`.
 
-Open questions for Gibwork:
-- Can an account delegate approvals to another wallet, or link an external wallet? That would let gibreview pay on website bounties without exporting anything.
+An external wallet **cannot be linked** to an account either (confirmed by the project owner, 2026-10-27).
+
+Open question for Gibwork:
+- Could an account delegate approvals to another wallet (for example an API key or a delegated signer)? That is the only way gibreview could pay on website bounties; until then they stay manual.
 - Does a bounty made through the SDK with an external wallet show up under a Gibwork account, and which one?
 
 **Still unverified, must be checked on stage (section 9):** the pool amount format, whether a participant can answer a comment without submitting again, and the submission statuses after approval.
