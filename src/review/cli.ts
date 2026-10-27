@@ -9,7 +9,7 @@ import { createClient, loadEnvFiles, resolveEnvironment } from '../gibwork.js';
 import { fromCents, PlanError, toCents } from '../plan.js';
 import { Store } from '../state.js';
 import { htmlToText } from '../template.js';
-import { ACCESS_LABEL, briefText, loadBrief, minimumPayment, siteCategory, totalPayoutCents, winnerSlots } from './brief.js';
+import { ACCESS_LABEL, briefText, loadBrief, minimumPayment, siteCategory, totalPayoutCents, WEBSITE_POOLS, websitePool, winnerSlots } from './brief.js';
 import type { CheckContext } from './checks.js';
 import { attachTask, collectReview, publishBrief, publishPreview, rankReview, type ReviewState } from './engine.js';
 import { applyDecisions, closePreview, closeReview, decisionCode, planDecisions, type ReviewAction } from './decide.js';
@@ -129,8 +129,19 @@ program
     console.log(`  payment      Custom minimum $${minimum} ${c.dim('(each approved submission is paid at least this; the tiers are only suggestions)')}`);
     console.log(`  description  paste everything in ${out}`);
     console.log(c.bold('\nThen Continue to Payment:'));
-    console.log(`  bounty amount  ${c.bold(`$${pool}`)} ${c.dim(brief.bounty ? '(type it in; this is the pool every winner is paid from)' : '(the payout total; add bounty.pool to the brief to set it)')}`);
-    console.log(`  pay with       Wallet or Card; the platform fee is added on top and shown before you pay`);
+    const tier = websitePool(toCents(pool));
+    if (!tier) {
+      console.log(c.red(`  The website offers bounty amounts up to $700 and your pool is ${pool} ${sym}.`));
+      console.log(c.red(`  Lower bounty.pool and the payouts, or create it with "gibreview publish", which can fund any amount.`));
+    } else {
+      console.log(`  bounty amount  ${c.bold(`$${tier.amount}`)} ${c.dim(`unlocks ${tier.unlocks}`)}`);
+      if (!tier.exact) {
+        const left = fromCents(tier.amount * 100 - totalPayoutCents(brief));
+        console.log(c.yellow(`                 The website has no $${pool}, only $${WEBSITE_POOLS.map((t) => t.amount).join(', $')}. With $${tier.amount}, ${left} ${sym} is left`));
+        console.log(c.yellow(`                 after the payouts; "gibreview close" refunds it. Or set bounty.pool to $${tier.amount} and raise the payouts.`));
+      }
+    }
+    console.log(`  pay with       Wallet (deposit USDC first if the balance is short) or Card; any platform fee is shown before you pay`);
     console.log(`  ${c.yellow('Authorize & Publish moves the money.')} Everything before it is safe to click through.`);
     if (access === 'link') console.log(c.dim(`\nOnly people with the bounty's link can take part, so share it with them.`));
     console.log(c.dim(`\nAfter publishing: gibreview attach <taskId> --brief ${briefPath}`));

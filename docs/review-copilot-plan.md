@@ -39,10 +39,20 @@ Give Gibwork bounty creators a CLI and MCP server that turns a pile of submissio
 - Categories on the website: Social Media, Development, Design, Feedback, Misc (`bounty.category`, sent as the first tag).
 
 **The website's payment page** (seen 2026-10-27, after "Continue to Payment"):
-- The **bounty amount** (the pool) is entered here, typed or from suggestions ($50, $100, $200, $380, $700).
-- Pay with Wallet or Card. Subtotal plus **platform fee** equals "Total to pay", so the fee is on top of the pool and paid by the creator.
-- "Reach ~100 freelancers" and "Listed in standard explore feed" are what a standard bounty unlocks.
-- "Unlock unlimited submissions with Gibwork Plus": a standard bounty has a **submission cap** (the SDK's `maxSubmissions`, `standardSubmissionSlotsRemaining`). Spam and copies use up slots good work could have taken.
+- The **bounty amount** (the pool) can only be one of five amounts; there is no custom amount. Each unlocks more reach:
+
+  | Pool | Unlocks |
+  | --- | --- |
+  | $50 | up to 50 submissions, reach ~200, daily digest email |
+  | $100 | up to 50 submissions, reach ~800, pushed to verified contributors |
+  | $200 | up to 50 submissions, reach ~13,500, pushed to verified contributors |
+  | $380 | the same as $200 as listed (reported to Gibwork as a likely bug) |
+  | $700 | up to 50 submissions, reach ~32,000, expert contributors, success manager, cross-posted to Gibwork X and Discord |
+
+  The SDK accepts other pools, so only website bounties are limited to these. `gibreview text` picks the matching amount, or the next one up and says how much `close` will refund.
+- Pay with Wallet (deposit USDC to it first when the balance is short) or Card. The **platform fee was $0.00** at every amount; "Total to pay" equals the pool.
+- Every tier caps a bounty at **50 submissions**; Gibwork Plus makes it unlimited (the SDK's `maxSubmissions`, `standardSubmissionSlotsRemaining`). Spam and copies use up slots good work could have taken.
+- Typo on the page: "Expert contributors Guranteed".
 - **Authorize & Publish** is the step that moves money.
 
 **Still unverified, must be checked on stage (section 9):** the pool amount format, whether a participant can answer a comment without submitting again, and the submission statuses after approval.

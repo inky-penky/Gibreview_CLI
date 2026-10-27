@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { Store } from '../state.js';
 import { createClient } from '../gibwork.js';
 import { attachTask, type ReviewState } from '../review/engine.js';
-import { briefContent, briefText, compareRules, loadBrief, ruleLine, rulesFromContent, validateBrief } from '../review/brief.js';
+import { briefContent, briefText, compareRules, loadBrief, ruleLine, rulesFromContent, validateBrief, websitePool } from '../review/brief.js';
 import { precheck } from '../review/precheck.js';
 import { mockFetch } from '../review/mockweb.js';
 
@@ -118,6 +118,13 @@ test('attach records whether the bounty lists the brief rules', async () => {
   assert.equal((await attachTask(pasted.taskId, b, 'dev-brief.yaml', 'mock', client, store)).task.rules, 'match');
   const handWritten = await create('<p>Fix the retry bug and send me the PR link.</p>');
   assert.equal((await attachTask(handWritten.taskId, b, 'dev-brief.yaml', 'mock', client, store)).task.rules, 'missing');
+});
+
+test('website bounty amounts: the same tier when offered, else the next one up, none above $700', () => {
+  assert.deepEqual([websitePool(5_000)?.amount, websitePool(5_000)?.exact], [50, true]);
+  assert.deepEqual([websitePool(6_000)?.amount, websitePool(6_000)?.exact], [100, false]);
+  assert.equal(websitePool(70_000)?.amount, 700);
+  assert.equal(websitePool(70_001), null);
 });
 
 test('pre-check: a hand-written bounty needs the creator brief', async () => {

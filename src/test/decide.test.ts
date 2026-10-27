@@ -34,15 +34,15 @@ test('multiple-winners: pays by place, asks for fixes, rejects the rest, and the
   const { state } = await collected('content-brief.yaml');
   const plan = planDecisions(state);
   const a = byUser(plan.actions);
-  assert.deepEqual([a.ada_writes.action, a.ada_writes.amount, a.ada_writes.message], ['pay', '30.00', '1st place']);
-  assert.deepEqual([a['tunde.docs'].action, a['tunde.docs'].amount, a['tunde.docs'].message], ['pay', '20.00', '2nd place']);
+  assert.deepEqual([a.ada_writes.action, a.ada_writes.amount, a.ada_writes.message], ['pay', '25.00', '1st place']);
+  assert.deepEqual([a['tunde.docs'].action, a['tunde.docs'].amount, a['tunde.docs'].message], ['pay', '15.00', '2nd place']);
   assert.equal(a.kemi_b.action, 'request-changes');
   assert.match(a.kemi_b.message, /returns 404/);
   assert.equal(a.shorty.action, 'request-changes');
   assert.match(a.copycat.message, /^Not accepted: 86% the same as @ada_writes/);
   assert.equal(a.late_lara.action, 'reject');
   assert.match(a.quickcash99.message, /SUBMISSION block/);
-  assert.equal(plan.payCents, 5_000);
+  assert.equal(plan.payCents, 4_000);
   assert.ok(plan.notes.some((n) => /1 paid place is still open and 2 submissions are being fixed/.test(n)));
 });
 
@@ -55,13 +55,13 @@ test('apply needs nothing twice: payments, comments and rejections are recorded 
   // A fresh collect keeps the decisions and the fix requests.
   await collectReview(state, client, store, { fetch: mockFetch });
   const ada = Object.values(state.submissions).find((s) => s.username === 'ada_writes')!;
-  assert.deepEqual([ada.decision?.action, ada.decision?.place, ada.decision?.amount, ada.reviewStatus], ['pay', 1, '30.00', 'approved']);
+  assert.deepEqual([ada.decision?.action, ada.decision?.place, ada.decision?.amount, ada.reviewStatus], ['pay', 1, '25.00', 'approved']);
   assert.ok(ada.decision?.txHash);
 
   const again = planDecisions(state);
   assert.deepEqual(again.actions.map((x) => [x.username, x.action]), [['kemi_b', 'hold'], ['shorty', 'hold']]);
   assert.match(again.actions[0].message, /waiting for @kemi_b to fix it/);
-  assert.equal(again.paidCents, 5_000);
+  assert.equal(again.paidCents, 4_000);
   assert.equal(decisionCode(state, again), null, 'nothing to confirm');
 
   // When a participant changes their submission and it now passes, it takes the open 3rd place.
@@ -77,7 +77,7 @@ test('the confirm code covers the exact plan', async () => {
   const { state } = await collected('content-brief.yaml');
   const plan = planDecisions(state);
   const code = decisionCode(state, plan)!;
-  assert.match(code, /^pay-50\.00-USDC-[0-9a-f]{6}$/);
+  assert.match(code, /^pay-40\.00-USDC-[0-9a-f]{6}$/);
   assert.equal(decisionCode(state, planDecisions(state)), code, 'same plan, same code');
 
   // A changed amount or a new action gives a different code.
@@ -91,11 +91,11 @@ test('close refunds what nobody won, and refuses while planned winners are unpai
   const { store, client, state } = await collected('content-brief.yaml');
   const before = closePreview(state);
   assert.deepEqual(before.unpaidWinners.map((a) => a.username), ['ada_writes', 'tunde.docs']);
-  assert.equal(before.left, '60.00');
+  assert.equal(before.left, '50.00');
 
   await applyDecisions(state, client, store, planDecisions(state));
   const after = closePreview(state);
-  assert.deepEqual([after.paid, after.left, after.unpaidWinners.length, after.undecided], ['50.00', '10.00', 0, 2]);
+  assert.deepEqual([after.paid, after.left, after.unpaidWinners.length, after.undecided], ['40.00', '10.00', 0, 2]);
 
   const closed = await closeReview(state, client, store);
   assert.equal(closed.refunded, '10.00');
@@ -132,7 +132,7 @@ test('an approval made on the Gibwork site takes a place; a fix request is sent 
   const plan = planDecisions(state);
   assert.ok(plan.notes.some((n) => /@tunde\.docs was approved outside gibreview; counted as the 1st place/.test(n)));
   const a = byUser(plan.actions);
-  assert.deepEqual([a.ada_writes.amount, a.ada_writes.message], ['20.00', '2nd place']);
+  assert.deepEqual([a.ada_writes.amount, a.ada_writes.message], ['15.00', '2nd place']);
 
   const kemi = Object.values(state.submissions).find((s) => s.username === 'kemi_b')!;
   kemi.changesRequested = { at: '2026-10-27T00:00:00Z', message: 'fix it', contentHash: contentHash(kemi.content) };
@@ -146,7 +146,7 @@ test("a place below the bounty's minimum is held, and Gibwork refuses it anyway"
   state.task.minimum = '25.00'; // as attach reads it from a bounty set to "$25+"
   const a = byUser(planDecisions(state).actions);
   assert.equal(a.ada_writes.action, 'pay');
-  assert.deepEqual([a['tunde.docs'].action, a['tunde.docs'].message], ['hold', "eligible, but 20.00 USDC is below the bounty's minimum of 25.00 USDC per approved submission"]);
+  assert.deepEqual([a['tunde.docs'].action, a['tunde.docs'].message], ['hold', "eligible, but 15.00 USDC is below the bounty's minimum of 25.00 USDC per approved submission"]);
   await assert.rejects(client.submissions.approve(state.task.id!, a.copycat.submissionId, { amount: '5.00' }), /below the minimum of 10.00/);
 });
 

@@ -336,6 +336,24 @@ export function siteCategory(b: Pick<Brief, 'bounty' | 'preset'>): SiteCategory 
   return b.bounty?.category ?? PRESET_CATEGORY[b.preset];
 }
 
+/**
+ * The bounty amounts the website's payment page offers (it has no custom amount), with what each unlocked
+ * when checked on 2026-10-27. The SDK accepts other amounts; only bounties made on the website are limited to these.
+ */
+export const WEBSITE_POOLS: Array<{ amount: number; unlocks: string }> = [
+  { amount: 50, unlocks: 'up to 50 submissions, reach ~200 freelancers, daily digest email' },
+  { amount: 100, unlocks: 'up to 50 submissions, reach ~800 freelancers, pushed to verified contributors' },
+  { amount: 200, unlocks: 'up to 50 submissions, reach ~13,500 freelancers, pushed to verified contributors' },
+  { amount: 380, unlocks: 'up to 50 submissions, reach ~13,500 freelancers, pushed to verified contributors (as listed, the same as $200)' },
+  { amount: 700, unlocks: 'up to 50 submissions, reach ~32,000 freelancers, expert contributors, success manager, cross-posted to Gibwork X and Discord' },
+];
+
+/** The website amount to pick for a pool: the same amount if offered, else the smallest one above it; null above $700. */
+export function websitePool(poolCents: number): { amount: number; unlocks: string; exact: boolean } | null {
+  const tier = WEBSITE_POOLS.find((t) => t.amount * 100 >= poolCents);
+  return tier ? { ...tier, exact: tier.amount * 100 === poolCents } : null;
+}
+
 /** The least any approved submission is paid: the brief's minimum, or else its smallest payout amount. */
 export function minimumPayment(b: Pick<Brief, 'bounty' | 'payout'>): string {
   return b.bounty?.minimum ?? fromCents(Math.min(...b.payout.amounts.map(toCents)));

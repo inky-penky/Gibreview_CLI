@@ -50,7 +50,7 @@ git clone https://github.com/inky-penky/Gibwork_Bug_Bash_CLI.git gibwork-bugbash
 cd gibwork-bugbash
 npm install          # also builds dist/ via the prepare script
 npm link             # optional, puts `bugbash` and `bugbash-mcp` on your PATH
-npm test             # 71 tests, including a full end-to-end run on the simulator
+npm test             # 72 tests, including a full end-to-end run on the simulator
 ```
 
 Without `npm link`, replace `bugbash` with `node dist/cli.js` in the commands below.
@@ -354,7 +354,7 @@ It exits 0 when the draft is ready. Creators who write the bounty on the Gibwork
 
 No payout may be below the bounty's minimum per approved submission (`bounty.minimum`, the website's payment tab; it defaults to the smallest payout). The brief can also set the website's `category` and `access` (who can participate: `everyone`, `verified`, `discord`, or `link`, which only the website can set).
 
-**Writing the bounty on the website instead.** `gibreview text brief.yaml` writes the description to `brief.description.txt` and prints what to pick on each tab of "Create Bounty": title, category, who can participate, due date, custom minimum and the pool to fund. Paste the whole file as the description; nothing in it is instructions for you. Then `gibreview attach <taskId> --brief brief.yaml`.
+**Writing the bounty on the website instead.** `gibreview text brief.yaml` writes the description to `brief.description.txt` and prints what to pick on each tab of "Create Bounty": title, category, who can participate, due date and custom minimum, then the bounty amount on the payment page. The website only offers $50, $100, $200, $380 or $700, so `text` picks your pool's amount (or the next one up, and says how much `close` will refund) and shows what it unlocks. Paste the whole file as the description; nothing in it is instructions for you. Then `gibreview attach <taskId> --brief brief.yaml`.
 
 **Decide.** Eligible submissions fill the paid places in rank order. A submission that only failed fixable checks (a dead link, failing CI) gets a comment asking for the fix instead of a rejection, but only while a paid place is still open, so nobody is asked to do work that can no longer win. Duplicates, late work, the wrong repository and unused templates are rejected with the reason. Eligible work beyond the paid places is held for the creator. The confirm code is a hash of the run, the total and every action with its amount, so if anything changes between the dry run and `--apply`, the code is refused. Each action is saved as it completes, so an interrupted run resumes without paying anyone twice. It stops at an uncertain payment, and stops paying if Gibwork reports that an approval closed the bounty.
 
