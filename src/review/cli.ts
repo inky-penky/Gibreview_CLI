@@ -9,7 +9,7 @@ import { createClient, loadEnvFiles, resolveEnvironment } from '../gibwork.js';
 import { fromCents, PlanError, toCents } from '../plan.js';
 import { Store } from '../state.js';
 import { htmlToText } from '../template.js';
-import { ACCESS_LABEL, briefText, loadBrief, minimumPayment, siteCategory, siteLowestTier, totalPayoutCents, winnerSlots } from './brief.js';
+import { ACCESS_LABEL, briefText, loadBrief, minimumPayment, siteCategory, totalPayoutCents, winnerSlots } from './brief.js';
 import type { CheckContext } from './checks.js';
 import { attachTask, collectReview, publishBrief, publishPreview, rankReview, type ReviewState } from './engine.js';
 import { applyDecisions, closePreview, closeReview, decisionCode, planDecisions, type ReviewAction } from './decide.js';
@@ -126,15 +126,12 @@ program
     console.log(`  category     ${category}`);
     console.log(`  options      ${ACCESS_LABEL[access]} · ${due}`);
     if (access === 'discord' && brief.bounty?.discord) console.log(c.dim(`               server ${brief.bounty.discord.guildName}${brief.bounty.discord.roleIds.length ? `, roles ${brief.bounty.discord.roleIds.join(', ')}` : ''}`));
-    console.log(`  payment      Custom minimum $${minimum} ${c.dim('(each approved submission is paid at least this)')}`);
+    console.log(`  payment      Custom minimum $${minimum} ${c.dim('(each approved submission is paid at least this; the tiers are only suggestions)')}`);
     console.log(`  description  paste everything in ${out}`);
-    console.log(`  then         Continue to Payment and fund the pool: ${c.bold(`${pool} ${sym}`)}${brief.bounty ? '' : c.dim(' (the payout total; add bounty.pool to the brief to set it)')}`);
-
-    const lowest = siteLowestTier(category);
-    if (Number(minimum) < lowest) {
-      console.log(c.yellow(`\n! The website's lowest minimum for ${category} was $${lowest} when last checked, above your smallest payout (${minimum}).`));
-      console.log(c.yellow(`  Raise the payouts, or check the payment tab: Gibwork cannot pay a winner less than the minimum.`));
-    }
+    console.log(c.bold('\nThen Continue to Payment:'));
+    console.log(`  bounty amount  ${c.bold(`$${pool}`)} ${c.dim(brief.bounty ? '(type it in; this is the pool every winner is paid from)' : '(the payout total; add bounty.pool to the brief to set it)')}`);
+    console.log(`  pay with       Wallet or Card; the platform fee is added on top and shown before you pay`);
+    console.log(`  ${c.yellow('Authorize & Publish moves the money.')} Everything before it is safe to click through.`);
     if (access === 'link') console.log(c.dim(`\nOnly people with the bounty's link can take part, so share it with them.`));
     console.log(c.dim(`\nAfter publishing: gibreview attach <taskId> --brief ${briefPath}`));
   });

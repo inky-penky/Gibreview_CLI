@@ -342,14 +342,6 @@ export function minimumPayment(b: Pick<Brief, 'bounty' | 'payout'>): string {
 }
 
 /**
- * The lowest minimum the website offered ("Anyone" tier) when checked on 2026-10-27: $25 with Development
- * selected, $10 before a category was chosen. Only used for a warning; Gibwork has the final say.
- */
-export function siteLowestTier(category: SiteCategory): number {
-  return category === 'Development' ? 25 : 10;
-}
-
-/**
  * Whether a bounty's text lists the same rules as the brief. Participants' pre-checks read the bounty,
  * so a bounty without them (or with different ones) is checked against something else than the review.
  */

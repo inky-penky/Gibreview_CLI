@@ -28,7 +28,7 @@ Give Gibwork bounty creators a CLI and MCP server that turns a pile of submissio
   - `multiple-winners`: a set amount per place for the top 3, top 10 and so on
   - `pool`: every accepted submission earns the same amount until the pool runs out (or `maxWinners`)
 - Approving one winner does not close the bounty. Every winner is paid by its own `approve` call.
-- Each winner gets the amount for their place, but never less than the bounty's **minimum per approved submission** (`minSubmissionAmount`). On the website this is the payment tab: a tier or a custom minimum; the preview shows "Minimum $25 per approved submission". The lowest tier seen on 2026-10-27 was $25 with Development selected and $10 before a category was chosen. The brief's `bounty.minimum` sets it (default: the smallest payout), validation rejects any payout below it, and `decide` holds a place that would pay less than an attached bounty's minimum.
+- Each winner gets the amount for their place, but never less than the bounty's **minimum per approved submission** (`minSubmissionAmount`). On the website this is the payment tab: a tier or a custom minimum; the preview shows "Minimum $25 per approved submission". The tiers ($10+ or $25+ "Anyone" depending on category) are only suggestions: on 2026-10-27 a custom minimum of $2 on a Development bounty was accepted through to the payment page. The brief's `bounty.minimum` sets it (default: the smallest payout), validation rejects any payout below it, and `decide` holds a place that would pay less than an attached bounty's minimum.
 - The whole pool goes to winners. Any Gibwork fee is paid by the creator, not taken from winners.
 - Money nobody wins is refunded to the creator through `close`.
 
@@ -37,6 +37,13 @@ Give Gibwork bounty creators a CLI and MCP server that turns a pile of submissio
 - Some bounties have eligibility rules: `requiresPremium` (subscribers only), verified accounts, Twitter follower or engagement minimums, or Discord server and role membership. Gibwork enforces these before anyone can submit, so review does not check them.
 - The website's options tab sets who can participate: Open to Everyone, Only Verified Accounts, Only to those with a Link, Only Discord Members. The brief's `bounty.access` mirrors it. The SDK can set verified and Discord; "link" exists only on the website, so `publish` refuses it and points to `text` plus `attach`.
 - Categories on the website: Social Media, Development, Design, Feedback, Misc (`bounty.category`, sent as the first tag).
+
+**The website's payment page** (seen 2026-10-27, after "Continue to Payment"):
+- The **bounty amount** (the pool) is entered here, typed or from suggestions ($50, $100, $200, $380, $700).
+- Pay with Wallet or Card. Subtotal plus **platform fee** equals "Total to pay", so the fee is on top of the pool and paid by the creator.
+- "Reach ~100 freelancers" and "Listed in standard explore feed" are what a standard bounty unlocks.
+- "Unlock unlimited submissions with Gibwork Plus": a standard bounty has a **submission cap** (the SDK's `maxSubmissions`, `standardSubmissionSlotsRemaining`). Spam and copies use up slots good work could have taken.
+- **Authorize & Publish** is the step that moves money.
 
 **Still unverified, must be checked on stage (section 9):** the pool amount format, whether a participant can answer a comment without submitting again, and the submission statuses after approval.
 
@@ -167,7 +174,7 @@ M1, M2 and M4 can be built and demoed fully on the mock, without funds.
 5. **Visibility.** Can participants see each other's submissions? This changes how much duplicate detection matters.
 6. **Network.** Stage bounties use the mainnet USDC mint. Does stage move real USDC?
 7. **Amount units in task details.** Discovery reports `asset.amount` as a base-unit string; `tasks.get` types it as a number. `attach` assumes base units for the pool it displays.
-8. ~~**The website's "payment" tab.**~~ Answered from the website: it is the minimum per approved submission (section 2). Still open: does the website accept a custom minimum below the lowest tier, and does the API enforce the same floor? A floor of $10 or $25 would explain why stage rejected 1.00 and 1.01 (question 1).
+8. ~~**The website's "payment" tab.**~~ Answered from the website: it is the minimum per approved submission (section 2). The website accepts a custom minimum below the lowest tier ($2 on Development reached the payment page), so the tiers are suggestions; reported to Gibwork as confusing, since "$25+" reads as a floor. Still open: does "Authorize & Publish" (or the API) enforce any floor on the minimum or the pool? That is what question 1 needs.
 
 ## 10. Risks
 

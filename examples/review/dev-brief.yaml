@@ -8,7 +8,7 @@ description: |
   Open a pull request against acme/payments-sdk. It must pass CI.
 bounty:
   pool: "50.00"
-  category: Development    # the website's lowest minimum for Development was $25
+  category: Development
   access: verified         # Only Verified Accounts
   deadlineHours: 120
   tags: [TypeScript]
