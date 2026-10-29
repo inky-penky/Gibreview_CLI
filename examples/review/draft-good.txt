@@ -1,0 +1,4 @@
+SUBMISSION
+link: https://dev.to/me/payments-api-for-beginners
+summary: A step by step guide to the three payments endpoints for developers who have never taken a payment before. It creates a payment, polls its status until it settles and refunds it, with a full request and response for every call and notes on the errors a beginner is most likely to hit.
+END

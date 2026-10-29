@@ -1,0 +1,251 @@
+{
+  "runId": "beginner-guide-to-the-pa-20261028-ucbe",
+  "taskId": "f2441426-79e9-42de-9070-009b77eb0a2e",
+  "ranked": [
+    {
+      "place": 1,
+      "shortlisted": true,
+      "submissionId": "3a7040d8-a0cf-4dce-ba04-c68beb02b700",
+      "username": "ada_writes",
+      "verdict": "eligible",
+      "reason": "2 checks passed",
+      "checks": [
+        {
+          "id": "reachable",
+          "field": "link",
+          "status": "pass",
+          "message": "https://dev.to/ada/payments-api-guide opens",
+          "fixable": false
+        },
+        {
+          "id": "words",
+          "field": "summary",
+          "status": "pass",
+          "message": "summary has 43 words",
+          "fixable": false
+        }
+      ],
+      "fields": {
+        "link": {
+          "text": "https://dev.to/ada/payments-api-guide",
+          "urls": [
+            "https://dev.to/ada/payments-api-guide"
+          ]
+        },
+        "summary": {
+          "text": "A step by step beginner guide to the three payments endpoints. It explains authentication first, then creates a payment, reads its status and issues a refund, with a full request and response example for every call and a short section on common errors.",
+          "urls": []
+        }
+      },
+      "aiScore": null
+    },
+    {
+      "place": 2,
+      "shortlisted": true,
+      "submissionId": "460c4edd-a204-4286-9d5a-93bf6c22cbc5",
+      "username": "tunde.docs",
+      "verdict": "eligible",
+      "reason": "2 checks passed",
+      "checks": [
+        {
+          "id": "reachable",
+          "field": "link",
+          "status": "pass",
+          "message": "https://hashnode.dev/tunde/charging-with-the-payments-api opens",
+          "fixable": false
+        },
+        {
+          "id": "words",
+          "field": "summary",
+          "status": "pass",
+          "message": "summary has 40 words",
+          "fixable": false
+        }
+      ],
+      "fields": {
+        "link": {
+          "text": "https://hashnode.dev/tunde/charging-with-the-payments-api",
+          "urls": [
+            "https://hashnode.dev/tunde/charging-with-the-payments-api"
+          ]
+        },
+        "summary": {
+          "text": "This tutorial walks through charging a customer with the payments API from a small Node script. It covers creating a payment intent, polling for the result and refunding it, and ends with a checklist for going live with real keys.",
+          "urls": []
+        }
+      },
+      "aiScore": null
+    },
+    {
+      "place": null,
+      "shortlisted": false,
+      "submissionId": "234bdb62-86b7-4dcf-ba75-16ff2f3ddd7c",
+      "username": "kemi_b",
+      "verdict": "needs-changes",
+      "reason": "https://dev.to/kemi/payments-guide-404 returns 404 (page not found)",
+      "checks": [
+        {
+          "id": "reachable",
+          "field": "link",
+          "status": "fail",
+          "message": "https://dev.to/kemi/payments-guide-404 returns 404 (page not found)",
+          "fixable": true
+        },
+        {
+          "id": "words",
+          "field": "summary",
+          "status": "pass",
+          "message": "summary has 32 words",
+          "fixable": false
+        }
+      ],
+      "fields": {
+        "link": {
+          "text": "https://dev.to/kemi/payments-guide-404",
+          "urls": [
+            "https://dev.to/kemi/payments-guide-404"
+          ]
+        },
+        "summary": {
+          "text": "My guide covers the payments API in Python: authentication, creating a payment, checking it and refunding it, with code for each step and notes on the errors I hit along the way.",
+          "urls": []
+        }
+      },
+      "aiScore": null
+    },
+    {
+      "place": null,
+      "shortlisted": false,
+      "submissionId": "18d10f46-eab1-4993-8e06-ad1b0c751a95",
+      "username": "shorty",
+      "verdict": "needs-changes",
+      "reason": "summary has 6 words, needs at least 30",
+      "checks": [
+        {
+          "id": "reachable",
+          "field": "link",
+          "status": "pass",
+          "message": "https://medium.com/@shorty/payments opens",
+          "fixable": false
+        },
+        {
+          "id": "words",
+          "field": "summary",
+          "status": "fail",
+          "message": "summary has 6 words, needs at least 30",
+          "fixable": true
+        }
+      ],
+      "fields": {
+        "link": {
+          "text": "https://medium.com/@shorty/payments",
+          "urls": [
+            "https://medium.com/@shorty/payments"
+          ]
+        },
+        "summary": {
+          "text": "Wrote a quick guide, see link.",
+          "urls": []
+        }
+      },
+      "aiScore": null
+    },
+    {
+      "place": null,
+      "shortlisted": false,
+      "submissionId": "e7c9875f-90d7-4f43-becf-12fcc1cb1bdc",
+      "username": "copycat",
+      "verdict": "disqualified",
+      "reason": "86% the same as @ada_writes's earlier submission",
+      "checks": [
+        {
+          "id": "reachable",
+          "field": "link",
+          "status": "pass",
+          "message": "https://dev.to/copycat/payments-guide opens",
+          "fixable": false
+        },
+        {
+          "id": "words",
+          "field": "summary",
+          "status": "pass",
+          "message": "summary has 43 words",
+          "fixable": false
+        },
+        {
+          "id": "duplicate",
+          "status": "fail",
+          "message": "86% the same as @ada_writes's earlier submission",
+          "fixable": false
+        }
+      ],
+      "fields": {
+        "link": {
+          "text": "https://dev.to/copycat/payments-guide",
+          "urls": [
+            "https://dev.to/copycat/payments-guide"
+          ]
+        },
+        "summary": {
+          "text": "A step by step beginners guide to the three payments endpoints. It explains authentication first, then creates a payment, reads its status and issues a refund, with a full request and response example for every call and a short section on common errors.",
+          "urls": []
+        }
+      },
+      "aiScore": null
+    },
+    {
+      "place": null,
+      "shortlisted": false,
+      "submissionId": "f64feeed-8aa5-4a48-a4fb-5d33d6be804d",
+      "username": "late_lara",
+      "verdict": "disqualified",
+      "reason": "sent 2026-10-31T11:24:46.342Z, after the deadline 2026-10-31T10:24:46.331Z",
+      "checks": [
+        {
+          "id": "deadline",
+          "status": "fail",
+          "message": "sent 2026-10-31T11:24:46.342Z, after the deadline 2026-10-31T10:24:46.331Z",
+          "fixable": false
+        },
+        {
+          "id": "reachable",
+          "field": "link",
+          "status": "pass",
+          "message": "https://dev.to/lara/payments opens",
+          "fixable": false
+        },
+        {
+          "id": "words",
+          "field": "summary",
+          "status": "pass",
+          "message": "summary has 50 words",
+          "fixable": false
+        }
+      ],
+      "fields": {
+        "link": {
+          "text": "https://dev.to/lara/payments",
+          "urls": [
+            "https://dev.to/lara/payments"
+          ]
+        },
+        "summary": {
+          "text": "This tutorial walks through charging a customer with the payments API from a small Node script. It covers creating a payment intent, polling for the result and refunding it, and ends with a checklist for going live with real keys. Sorry this is late, my laptop broke during the week.",
+          "urls": []
+        }
+      },
+      "aiScore": null
+    },
+    {
+      "place": null,
+      "shortlisted": false,
+      "submissionId": "c767b1a0-545f-49f8-96f1-8185f9466cb2",
+      "username": "quickcash99",
+      "verdict": "invalid",
+      "reason": "no SUBMISSION block: the template was not used",
+      "checks": [],
+      "fields": {},
+      "aiScore": null
+    }
+  ]
+}

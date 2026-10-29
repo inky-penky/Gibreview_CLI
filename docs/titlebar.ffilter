@@ -1,0 +1,10 @@
+pad=iw:ih+44:0:44:color=0x1F1F1F,
+drawbox=x=12:y=6:w=230:h=38:color=0x0C0C0C:t=fill,
+drawbox=x=24:y=15:w=20:h=20:color=0x012456:t=fill,
+drawtext=fontfile='C\:/Windows/Fonts/consolab.ttf':text='>_':x=26:y=18:fontsize=13:fontcolor=white,
+drawtext=fontfile='C\:/Windows/Fonts/segoeui.ttf':text='Windows PowerShell':x=54:y=14:fontsize=17:fontcolor=white,
+drawtext=fontfile='C\:/Windows/Fonts/seguisym.ttf':text='✕':x=220:y=14:fontsize=13:fontcolor=0xCCCCCC,
+drawtext=fontfile='C\:/Windows/Fonts/segoeui.ttf':text='+':x=262:y=8:fontsize=24:fontcolor=0xCCCCCC,
+drawtext=fontfile='C\:/Windows/Fonts/seguisym.ttf':text='—':x=w-158:y=12:fontsize=16:fontcolor=0xCCCCCC,
+drawtext=fontfile='C\:/Windows/Fonts/seguisym.ttf':text='☐':x=w-104:y=9:fontsize=20:fontcolor=0xCCCCCC,
+drawtext=fontfile='C\:/Windows/Fonts/seguisym.ttf':text='✕':x=w-50:y=11:fontsize=17:fontcolor=0xCCCCCC

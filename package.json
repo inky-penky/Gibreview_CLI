@@ -8,6 +8,8 @@
     "start": "node dist/review/cli.js",
     "mcp": "node dist/mcp.js",
     "demo": "bash examples/demo.sh",
+    "demo:review": "bash examples/review-demo.sh",
+    "demo:agent": "node examples/mcp-review-demo.mjs",
     "prepare": "tsc"
   },
   "keywords": [

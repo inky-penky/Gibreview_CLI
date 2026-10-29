@@ -1,0 +1,245 @@
+The creator's bounty is task adaa6eb1-98a9-4d0c-b8c3-7086d8f6c2c2. The agent takes it from here.
+Connected. Review tools: review_text, review_attach, review_collect, review_score, review_rank, review_decide, review_close, review_status, review_precheck
+
+▶ agent calls review_precheck {"taskId":"adaa6eb1-98a9-4d0c-b8c3-7086d8f6c2c2","environment":"mock","submission":"SUBMISSION\nlink: https://dev.to/me/payments-guide-dead\nsummary: A short guide.\nEND"}
+{
+  "bounty": "Beginner guide to the payments API",
+  "rules": "bounty",
+  "fields": [
+    "link",
+    "summary"
+  ],
+  "checks": [
+    {
+      "id": "reachable",
+      "field": "link",
+      "status": "fail",
+      "message": "https://dev.to/me/payments-guide-dead returns 404 (page not found)",
+      "fixable": true
+    },
+    {
+      "id": "words",
+      "field": "summary",
+      "status": "fail",
+      "message": "summary has 3 words, needs at least 30",
+      "fixable": true
+    }
+  ],
+  "verdict": "needs-changes",
+  "ready": false,
+  "summary": "Fix these 2 problems before you submit: https://dev.to/me/payments-guide-dead returns 404 (page not found); summary has 3 words, needs at least 30.",
+  "limits": [
+    "Copies are checked against other people's submissions at review time, which a pre-check cannot see.",
+    "Passing every check makes a submission eligible; the creator still chooses who wins."
+  ]
+}
+
+▶ agent calls review_attach {"taskId":"adaa6eb1-98a9-4d0c-b8c3-7086d8f6c2c2","briefPath":"<repo>\\examples\\review\\content-brief.yaml","environment":"mock"}
+{
+  "runId": "beginner-guide-to-the-pa-20261028-l4em",
+  "title": "Beginner guide to the payments API",
+  "pool": "50.00 USDC",
+  "minimumPerApproved": "10.00",
+  "payments": "this server can pay, reject and refund on this bounty",
+  "warnings": []
+}
+
+▶ agent calls review_collect {}
+{
+  "fetched": 7,
+  "newSubmissions": 7,
+  "byVerdict": {
+    "eligible": 2,
+    "needs-changes": 2,
+    "disqualified": 2,
+    "invalid": 1
+  }
+}
+
+▶ agent calls review_rank {"outDir":"<tmp>\\gibreview-mcp-review-Sr0Ouh\\review-report"}
+{
+  "shortlist": [
+    {
+      "place": 1,
+      "shortlisted": true,
+      "username": "ada_writes",
+      "verdict": "eligible",
+      "reason": "2 checks passed",
+      "unverified": []
+    },
+    {
+      "place": 2,
+      "shortlisted": true,
+      "username": "tunde.docs",
+      "verdict": "eligible",
+      "reason": "2 checks passed",
+      "unverified": []
+    },
+    {
+      "place": null,
+      "shortlisted": false,
+      "username": "kemi_b",
+      "verdict": "needs-changes",
+      "reason": "https://dev.to/kemi/payments-guide-404 returns 404 (page not found)",
+      "unverified": []
+    },
+    {
+      "place": null,
+      "shortlisted": false,
+      "username": "shorty",
+      "verdict": "needs-changes",
+      "reason": "summary has 6 words, needs at least 30",
+      "unverified": []
+    },
+    {
+      "place": null,
+      "shortlisted": false,
+      "username": "copycat",
+      "verdict": "disqualified",
+      "reason": "86% the same as @ada_writes's earlier submission",
+      "unverified": []
+    },
+    {
+      "place": null,
+      "shortlisted": false,
+      "username": "late_lara",
+      "verdict": "disqualified",
+      "reason": "sent 2026-10-31T11:25:26.796Z, after the deadline 2026-10-31T10:25:26.787Z",
+      "unverified": []
+    },
+    {
+      "place": null,
+      "shortlisted": false,
+      "username": "quickcash99",
+      "verdict": "invalid",
+      "reason"
+…
+
+▶ agent calls review_decide {}
+{
+  "mode": "pay-here",
+  "actions": [
+    {
+      "username": "ada_writes",
+      "action": "pay",
+      "amount": "25.00",
+      "message": "1st place"
+    },
+    {
+      "username": "tunde.docs",
+      "action": "pay",
+      "amount": "15.00",
+      "message": "2nd place"
+    },
+    {
+      "username": "kemi_b",
+      "action": "request-changes",
+      "amount": null,
+      "message": "Thanks for your submission. It can't be accepted yet: https://dev.to/kemi/payments-guide-404 returns 404 (page not found). Please fix this and reply here when it's done."
+    },
+    {
+      "username": "shorty",
+      "action": "request-changes",
+      "amount": null,
+      "message": "Thanks for your submission. It can't be accepted yet: summary has 6 words, needs at least 30. Please fix this and reply here when it's done."
+    },
+    {
+      "username": "copycat",
+      "action": "reject",
+      "amount": null,
+      "message": "Not accepted: 86% the same as @ada_writes's earlier submission."
+    },
+    {
+      "username": "late_lara",
+      "action": "reject",
+      "amount": null,
+      "message": "Not accepted: sent 2026-10-31T11:25:26.796Z, after the deadline 2026-10-31T10:25:26.787Z."
+    },
+    {
+      "username": "quickcash99",
+      "action": "reject",
+      "amount": null,
+      "message": "Not accepted: the submission does not use the SUBMISSION block from the bounty description."
+
+…
+
+▶ agent calls review_decide {"apply":true}  (error)
+Show the user this plan and ask them to approve it, then call again with confirmCode="pay-40.00-USDC-da5480".
+
+(agent shows the user 40.00 USDC to 2 winners and the user approves)
+
+▶ agent calls review_decide {"apply":true,"confirmCode":"pay-40.00-USDC-da5480"}
+{
+  "actions": [
+    {
+      "username": "ada_writes",
+      "action": "pay",
+      "amount": "25.00",
+      "outcome": "done"
+    },
+    {
+      "username": "tunde.docs",
+      "action": "pay",
+      "amount": "15.00",
+      "outcome": "done"
+    },
+    {
+      "username": "kemi_b",
+      "action": "request-changes",
+      "amount": null,
+      "outcome": "done"
+    },
+    {
+      "username": "shorty",
+      "action": "request-changes",
+      "amount": null,
+      "outcome": "done"
+    },
+    {
+      "username": "copycat",
+      "action": "reject",
+      "amount": null,
+      "outcome": "done"
+    },
+    {
+      "username": "late_lara",
+      "action": "reject",
+      "amount": null,
+      "outcome": "done"
+    },
+    {
+      "username": "quickcash99",
+      "action": "reject",
+      "amount": null,
+      "outcome": "done"
+    }
+  ]
+}
+
+▶ agent calls review_close {}
+{
+  "paid": "40.00",
+  "left": "10.00",
+  "undecided": 2,
+  "unpaidWinners": []
+}
+
+▶ agent calls review_status {}
+{
+  "runId": "beginner-guide-to-the-pa-20261028-l4em",
+  "bounty": "Beginner guide to the payments API",
+  "taskId": "adaa6eb1-98a9-4d0c-b8c3-7086d8f6c2c2",
+  "environment": "mock",
+  "pool": "50.00 USDC",
+  "payments": "by this server",
+  "submissions": 7,
+  "paid": [
+    "@ada_writes 25.00",
+    "@tunde.docs 15.00"
+  ],
+  "collectedAt": "2026-10-28T10:25:27.518Z",
+  "closed": null
+}
+
+Agent summary: paid @ada_writes 25.00, @tunde.docs 15.00; fix requests and rejections sent with a reason each.
+Shortlist in <tmp>\gibreview-mcp-review-Sr0Ouh\review-report

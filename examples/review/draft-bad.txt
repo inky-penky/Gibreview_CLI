@@ -1,0 +1,4 @@
+SUBMISSION
+link: https://dev.to/me/payments-guide-404
+summary: A quick guide to payments.
+END

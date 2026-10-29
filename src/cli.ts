@@ -13,7 +13,7 @@ import { attentionNotes, type ReportFormat } from './report.js';
 
 loadEnvFiles();
 
-const tty = process.stdout.isTTY && !process.env.NO_COLOR;
+const tty = (process.stdout.isTTY || process.env.FORCE_COLOR === '1') && !process.env.NO_COLOR;
 const paint = (code: number) => (s: string) => (tty ? `\x1b[${code}m${s}\x1b[0m` : s);
 const c = { bold: paint(1), dim: paint(2), red: paint(31), green: paint(32), yellow: paint(33), cyan: paint(36) };
 const log = (m: string) => console.log(c.dim(`  ${m}`));

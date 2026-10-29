@@ -14,6 +14,23 @@ brief.yaml ─► gibreview text ─► you create and pay for the bounty on gib
                     approve, comment and reject on gibwork.com ◄──┘  (a checklist, then decide --mark-done)
 ```
 
+## Demo
+
+- **Video:** _link to the screen recording_
+- **Screenshots:** _docs/screenshots/_
+- **Sample output** from the runs below, in [`examples/sample-output/review/`](examples/sample-output/review/):
+  - [`terminal-transcript.txt`](examples/sample-output/review/terminal-transcript.txt): the CLI from brief to payout
+  - [`mcp-agent-transcript.txt`](examples/sample-output/review/mcp-agent-transcript.txt): an AI agent doing the same review through the MCP server
+  - [`review.md`](examples/sample-output/review/review.md) and [`review.json`](examples/sample-output/review/review.json): the shortlist `rank` writes
+
+Run them yourself. They use the offline simulator, so they need no wallet:
+
+```bash
+npm run demo:review    # CLI: text, publish, participant pre-check, collect, rank, decide, pay, close
+npm run demo:agent     # the same review driven by an agent over MCP, with the confirm-code guard
+npm run demo           # the QA preset
+```
+
 ## The problem
 
 A popular bounty brings in dozens of submissions, and a standard bounty only takes 50. Some are good, some are spam, some copy an earlier entry, some link to a page that doesn't exist, some arrive after the deadline. The creator reads them all by hand, decides who wins, and writes to the people who nearly made it. Participants find out what was wrong only when they are rejected, after the work is done.
@@ -340,7 +357,7 @@ The agent never holds a key, and it can't choose payees or amounts: those come f
 4. **Budget cap.** `GIBREVIEW_MCP_MAX_BUDGET` caps what a QA run may fund, counting what it already funded. A value that can't be read blocks spending.
 5. **Some steps stay human.** Closing a review while winners are unpaid, and refunding a QA run, are not agent tools.
 
-`node examples/mcp-agent-demo.mjs` shows an agent session end to end on the simulator.
+`npm run demo:agent` ([`examples/mcp-review-demo.mjs`](examples/mcp-review-demo.mjs)) shows an agent reviewing a bounty end to end on the simulator, and `node examples/mcp-agent-demo.mjs` shows one running the QA preset.
 
 ## QA preset (`gibreview qa`)
 
@@ -417,13 +434,13 @@ src/
   cli.ts, engine.ts, plan.ts, parser.ts, aggregate.ts, report.ts, content.ts,
   generate/, csvcases.ts, importplan.ts   the QA preset
   test/         unit and end-to-end tests on the simulator
-examples/       briefs, a QA plan, demo scripts, CI workflow, sample output
+examples/       briefs, a QA plan, demo scripts, CI workflow, sample output (review/ for the review flow)
 docs/           plan.md (design and open questions), verification.md (checking it on real Gibwork)
 ```
 
 ## Status and limits
 
-- **Built and tested on the simulator.** All 77 tests and both demos run offline. Checking it against real Gibwork needs a small real bounty: follow [docs/verification.md](docs/verification.md). Open questions for Gibwork are in [docs/plan.md](docs/plan.md), section 9.
+- **Built and tested on the simulator.** All 77 tests and the three demos run offline. Checking it against real Gibwork needs a small real bounty: follow [docs/verification.md](docs/verification.md). Open questions for Gibwork are in [docs/plan.md](docs/plan.md), section 9.
 - **Checklists have no direct links yet.** The website checklist doesn't link to each submission yet, because gibreview doesn't know gibwork.com's submission page address.
 - **Fixing a submission depends on Gibwork.** How a participant fixes a submission after a comment (a reply, an edit, or a new submission) is up to Gibwork; gibreview re-checks whatever changed.
 - **Evidence is links, not files.** The SDK has no media upload, so evidence is a link.

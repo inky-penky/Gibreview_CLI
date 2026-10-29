@@ -1,0 +1,202 @@
+
+$ gibreview text content-brief.yaml   (the bounty text and what to pick on gibwork.com)
+✓ Wrote the description to bounty.description.txt
+
+On gibwork.com, Create Bounty:
+  title        Beginner guide to the payments API
+  category     Misc
+  options      Open to Everyone · due Sat Oct 31 2026
+  payment      Custom minimum $10.00 (each approved submission is paid at least this; the tiers are only suggestions)
+  description  paste everything in bounty.description.txt
+
+Then Continue to Payment:
+  bounty amount  $50 unlocks up to 50 submissions, reach ~200 freelancers, daily digest email
+  pay with       Wallet: the Solana wallet Gibwork made for your account (deposit USDC to it first if it is short)
+                 or Card. Any platform fee is shown before you pay.
+  Authorize & Publish moves the money. Everything before it is safe to click through.
+
+After publishing: gibreview attach <taskId> --brief content-brief.yaml
+
+$ gibreview publish content-brief.yaml --mock   (shows the cost, moves nothing)
+Beginner guide to the payments API  mock
+  pool 50.00 USDC into escrow, plus Gibwork fees · pays at most 50.00 USDC (multiple-winners, 25.00 / 15.00 / 10.00)
+  deadline 2026-10-31T10:24:45.812Z · 2 template fields · 2 checks
+
+Nothing published. Re-run with --confirm to sign and fund it.
+
+$ gibreview publish content-brief.yaml --mock --confirm
+Beginner guide to the payments API  mock
+  pool 50.00 USDC into escrow, plus Gibwork fees · pays at most 50.00 USDC (multiple-winners, 25.00 / 15.00 / 10.00)
+  deadline 2026-10-31T10:24:46.329Z · 2 template fields · 2 checks
+✓ Published task f2441426-79e9-42de-9070-009b77eb0a2e  tx 2ccfc9fb5891968bcb13ee09039dd9142c53594526c4
+  run beginner-guide-to-the-pa-20261028-ucbe. When submissions arrive: gibreview collect
+
+$ cat draft-bad.txt
+SUBMISSION
+link: https://dev.to/me/payments-guide-404
+summary: A quick guide to payments.
+END
+
+$ gibreview check <taskId> draft-bad.txt --mock   (participant pre-check, free)
+Beginner guide to the payments API  mock  rules from the bounty: link, summary
+
+  ✗ reachable  https://dev.to/me/payments-guide-404 returns 404 (page not found)
+  ✗ words      summary has 5 words, needs at least 30
+
+✗ Fix these 2 problems before you submit: https://dev.to/me/payments-guide-404 returns 404 (page not found); summary has 5 words, needs at least 30.
+  Copies are checked against other people's submissions at review time, which a pre-check cannot see.
+  Passing every check makes a submission eligible; the creator still chooses who wins.
+
+Exit code 1 (0 ready to submit)
+
+$ gibreview check <taskId> draft-good.txt --mock
+Beginner guide to the payments API  mock  rules from the bounty: link, summary
+
+  ✓ reachable  https://dev.to/me/payments-api-for-beginners opens
+  ✓ words      summary has 53 words
+
+✓ Ready to submit: every check passed.
+  Copies are checked against other people's submissions at review time, which a pre-check cannot see.
+  Passing every check makes a submission eligible; the creator still chooses who wins.
+
+Exit code 0 (0 ready to submit)
+
+$ gibreview collect   (fetch every submission and run the checks)
+  Checking @ada_writes…
+  Checking @tunde.docs…
+  Checking @kemi_b…
+  Checking @shorty…
+  Checking @copycat…
+  Checking @late_lara…
+✓ 7 submissions, 7 new
+  2 eligible  2 need changes  2 disqualified  1 invalid
+
+Next gibreview rank
+
+$ gibreview rank
+Beginner guide to the payments API  mock  shortlist of 3
+
+  ★ #1  eligible       @ada_writes      2 checks passed
+  ★ #2  eligible       @tunde.docs      2 checks passed
+     –  needs changes  @kemi_b          https://dev.to/kemi/payments-guide-404 returns 404 (page not found)
+     –  needs changes  @shorty          summary has 6 words, needs at least 30
+     –  disqualified   @copycat         86% the same as @ada_writes's earlier submission
+     –  disqualified   @late_lara       sent 2026-10-31T11:24:46.342Z, after the deadline 2026-10-31T10:24:46.331Z
+     –  invalid        @quickcash99     no SUBMISSION block: the template was not used
+
+✓ review-report\review.md
+✓ review-report\review.json
+
+Nothing is paid at this step. Read the shortlisted work, then run "gibreview decide" to see who would be paid.
+
+$ gibreview show @copycat
+@copycat  disqualified   e7c9875f-90d7-4f43-becf-12fcc1cb1bdc · 2026-10-28T11:54:46.342Z · Gibwork OPEN
+
+SUBMISSION
+link: https://dev.to/copycat/payments-guide
+summary: A step by step beginners guide to the three payments endpoints. It explains authentication first, then creates a payment, reads its status and issues a refund, with a full request and response example for every call and a short section on common errors.
+END 
+
+  ✓ reachable  https://dev.to/copycat/payments-guide opens
+  ✓ words      summary has 43 words
+  ✗ duplicate  86% the same as @ada_writes's earlier submission  (disqualifies)
+
+$ gibreview decide   (dry run: who is paid, asked to fix or rejected)
+Beginner guide to the payments API  mock  multiple-winners, pool 50.00 USDC
+
+  ! The deadline (2026-10-31T10:24:46.331Z) has not passed. A place paid now cannot go to a better submission that arrives later.
+  ! 1 paid place is still open and 2 submissions are being fixed. Closing the bounty now ends their chance.
+
+  PAY     @ada_writes      25.00 USDC  1st place
+  PAY     @tunde.docs      15.00 USDC  2nd place
+  CHANGES @kemi_b          Thanks for your submission. It can't be accepted yet: https://dev.to/kemi/payments-guide-404 returns 404 (page not found). Please fix this and reply here when it's done.
+  CHANGES @shorty          Thanks for your submission. It can't be accepted yet: summary has 6 words, needs at least 30. Please fix this and reply here when it's done.
+  REJECT  @copycat         Not accepted: 86% the same as @ada_writes's earlier submission.
+  REJECT  @late_lara       Not accepted: sent 2026-10-31T11:24:46.342Z, after the deadline 2026-10-31T10:24:46.331Z.
+  REJECT  @quickcash99     Not accepted: the submission does not use the SUBMISSION block from the bounty description.
+
+  40.00 USDC to 2 winners · 2 fix requests · 3 rejections · 0 held
+  10.00 USDC of the pool left afterwards; "gibreview close" refunds it
+
+Dry run. Nothing was paid, posted or rejected.
+To apply exactly this plan: gibreview decide --apply --confirm pay-40.00-USDC-6bf7f7
+
+$ gibreview decide --apply --confirm pay-40.00-USDC-6bf7f7
+Beginner guide to the payments API  mock  multiple-winners, pool 50.00 USDC
+
+  ! The deadline (2026-10-31T10:24:46.331Z) has not passed. A place paid now cannot go to a better submission that arrives later.
+  ! 1 paid place is still open and 2 submissions are being fixed. Closing the bounty now ends their chance.
+
+  Paying @ada_writes 25.00 USDC…
+  Paying @tunde.docs 15.00 USDC…
+  Asking @kemi_b for a fix…
+  Asking @shorty for a fix…
+  Rejecting @copycat…
+  Rejecting @late_lara…
+  Rejecting @quickcash99…
+  PAY     @ada_writes      25.00 USDC  1st place  ✓
+  PAY     @tunde.docs      15.00 USDC  2nd place  ✓
+  CHANGES @kemi_b          Thanks for your submission. It can't be accepted yet: https://dev.to/kemi/payments-guide-404 returns 404 (page not found). Please fix this and reply here when it's done.  ✓
+  CHANGES @shorty          Thanks for your submission. It can't be accepted yet: summary has 6 words, needs at least 30. Please fix this and reply here when it's done.  ✓
+  REJECT  @copycat         Not accepted: 86% the same as @ada_writes's earlier submission.  ✓
+  REJECT  @late_lara       Not accepted: sent 2026-10-31T11:24:46.342Z, after the deadline 2026-10-31T10:24:46.331Z.  ✓
+  REJECT  @quickcash99     Not accepted: the submission does not use the SUBMISSION block from the bounty description.  ✓
+
+✓ Done. 10.00 USDC of the pool left afterwards; "gibreview close" refunds it
+
+$ gibreview close --confirm   (refunds what nobody won)
+Beginner guide to the payments API  mock
+  pool 50.00 USDC · paid 40.00 USDC · about 10.00 USDC comes back, less any Gibwork refund fee
+  2 submissions stay undecided (held or waiting for a fix)
+✓ Closed, 10.00 USDC refunded  tx d54bc4224b0a857f39e55cf411c32d59f1d50528d6c9
+
+$ gibreview status
+Beginner guide to the payments API  mock  run beginner-guide-to-the-pa-20261028-ucbe
+  task f2441426-79e9-42de-9070-009b77eb0a2e · copilot · pool 50.00 USDC
+  7 submissions, last collected 2026-10-28T10:24:48.449Z
+  paid @ada_writes 25.00, @tunde.docs 15.00 USDC
+  closed 2026-10-28T10:24:51.500Z, 10.00 USDC refunded
+
+$ head -40 review-report/review.md
+# Review · Beginner guide to the payments API
+
+Run `beginner-guide-to-the-pa-20261028-ucbe` · environment **mock** · task f2441426-79e9-42de-9070-009b77eb0a2e · pool 50.00 USDC · deadline 2026-10-31T10:24:46.331Z
+Generated 2026-10-28T10:24:48.956Z, submissions collected 2026-10-28T10:24:48.449Z
+
+**7** submissions: 2 eligible, 2 need changes, 2 disqualified, 1 invalid.
+
+## Shortlist
+
+### 1. @ada_writes
+
+- **link:** https://dev.to/ada/payments-api-guide
+- **summary:** A step by step beginner guide to the three payments endpoints. It explains authentication first, then creates a payment, reads its status and issues a refund, with a full request and response example for every call and a short section on common errors.
+- Checks: 2 checks passed
+- Gibwork record: 14 approved, 1 rejected, rating 4.9
+
+### 2. @tunde.docs
+
+- **link:** https://hashnode.dev/tunde/charging-with-the-payments-api
+- **summary:** This tutorial walks through charging a customer with the payments API from a small Node script. It covers creating a payment intent, polling for the result and refunding it, and ends with a checklist for going live with real keys.
+- Checks: 2 checks passed
+- Gibwork record: 6 approved, 0 rejected, rating 4.7
+
+## All submissions
+
+| Place | Participant | Verdict | Sent | Why |
+| --- | --- | --- | --- | --- |
+| 1 | @ada_writes | ✅ eligible | 2026-10-28 10:54 | 2 checks passed |
+| 2 | @tunde.docs | ✅ eligible | 2026-10-28 11:14 | 2 checks passed |
+| – | @kemi_b | ✏️ needs changes | 2026-10-28 11:34 | https://dev.to/kemi/payments-guide-404 returns 404 (page not found) |
+| – | @shorty | ✏️ needs changes | 2026-10-28 11:44 | summary has 6 words, needs at least 30 |
+| – | @copycat | ⛔ disqualified | 2026-10-28 11:54 | 86% the same as @ada_writes's earlier submission |
+| – | @late_lara | ⛔ disqualified | 2026-10-31 11:24 | sent 2026-10-31T11:24:46.342Z, after the deadline 2026-10-31T10:24:46.331Z |
+| – | @quickcash99 | 🗑️ invalid | 2026-10-28 10:29 | no SUBMISSION block: the template was not used |
+
+## Judging criteria (for the creator)
+
+- Covers all three endpoints with working examples (40)
+- Accurate against the API reference (40)
+- Clear for someone new to payments (20)
+
+Working directory <tmp>/demo
