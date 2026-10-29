@@ -16,8 +16,7 @@ brief.yaml ─► gibreview text ─► you create and pay for the bounty on gib
 
 ## Demo
 
-- **Video:** _link to the screen recording_
-- **Screenshots:** _docs/screenshots/_
+- **Video:** [`docs/demo.mp4`](docs/demo.mp4), about 4 minutes. It clones this repository, installs and tests it, then reviews a bounty from the CLI and from an AI agent, on the simulator.
 - **Sample output** from the runs below, in [`examples/sample-output/review/`](examples/sample-output/review/):
   - [`terminal-transcript.txt`](examples/sample-output/review/terminal-transcript.txt): the CLI from brief to payout
   - [`mcp-agent-transcript.txt`](examples/sample-output/review/mcp-agent-transcript.txt): an AI agent doing the same review through the MCP server
@@ -30,6 +29,22 @@ npm run demo:review    # CLI: text, publish, participant pre-check, collect, ran
 npm run demo:agent     # the same review driven by an agent over MCP, with the confirm-code guard
 npm run demo           # the QA preset
 ```
+
+To record the video again: `.\docs\record-demo.ps1` (needs VHS, ttyd and ffmpeg).
+
+**`rank`: every submission checked, with a reason for each verdict**
+
+![gibreview rank](docs/screenshots/2-rank.png)
+
+**`decide`: who is paid, asked to fix their work, or rejected**
+
+![gibreview decide](docs/screenshots/3-decide.png)
+
+**`check`: a participant pre-checks a draft before submitting**
+
+![gibreview check](docs/screenshots/5-participant-check.png)
+
+More in [`docs/screenshots/`](docs/screenshots/): the install and test run, paying with the confirm code, the bounty text for gibwork.com, and the AI agent session.
 
 ## The problem
 
